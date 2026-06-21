@@ -7,7 +7,21 @@
 // (real, high-res cover images — gives realistic dimensions/quality to design
 // against, instead of placeholder gray boxes.)
 
-export const mockBooks = [
+// The canonical shape of a book. Components depend on THIS, not on where the
+// data comes from — so swapping mock data for a real API fetch later is a
+// no-op for any component that accepts a `Book`.
+export interface Book {
+  id: string;
+  title: string;
+  author: string;
+  coverUrl: string;
+  dateStarted: string;   // ISO date, e.g. "2024-05-12"
+  dateFinished: string;  // ISO date, e.g. "2024-05-28"
+  bookNumber: number;
+  quote: string;
+}
+
+export const mockBooks: Book[] = [
   {
     id: "b1f7c2a0-1d3e-4a5b-8c9d-0e1f2a3b4c5d",
     title: "The Alchemist",

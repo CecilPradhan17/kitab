@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import type { Book } from "@/features/library/mockBooks";
+import BookScene from "./BookScene";
 
 interface BookDetailModalProps {
   /** The book to show, or null when the modal is closed. Driving the modal off
@@ -66,16 +67,10 @@ export default function BookDetailModal({ book, onClose }: BookDetailModalProps)
           </span>
         </button>
 
-        {/* Cover. Placeholder for the live 3D book that replaces it in Chunk 2 —
-            same column footprint so the layout won't shift when 3D lands. */}
-        <div className="relative mx-auto w-48 shrink-0 sm:mx-0">
-          <div className="aspect-[2/3] overflow-hidden rounded-lg ring-1 ring-white/10 shadow-2xl shadow-black/60">
-            <img
-              src={book.coverUrl}
-              alt={`Cover of ${book.title} by ${book.author}`}
-              className="h-full w-full object-cover"
-            />
-          </div>
+        {/* The live 3D book. Keyed on book.id so switching books remounts the
+            scene with a fresh texture instead of mutating the existing one. */}
+        <div className="relative mx-auto aspect-[2/3] w-48 shrink-0 sm:mx-0">
+          <BookScene key={book.id} book={book} />
         </div>
 
         {/* Metadata, editorial style */}

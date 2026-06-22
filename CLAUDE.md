@@ -79,9 +79,11 @@ type Book = {
   causes GPU/memory issues at scale (high draw calls, large texture memory).
   2D-grid-then-3D-detail avoids this entirely while still delivering the "wow"
   moment where it matters most.
-- **Card glow effect:** Each book card's underglow color should be dynamically
-  extracted from the cover image (e.g. via `fast-average-color`), not hardcoded,
-  so every book automatically gets a matching glow.
+- **Card glow effect:** Each book card has a single, uniform brand-gold
+  underglow (the `--accent` token). We deliberately decided NOT to extract a
+  per-cover color (e.g. via `fast-average-color`) — a consistent gold glow
+  reinforces the brand and keeps the grid visually calm. Do not reintroduce
+  dynamic color extraction.
 - **3D book model:** One reusable mesh/geometry for all books ("cookie cutter"
   approach). Only the cover texture changes per book. Do not generate unique
   geometry per book.

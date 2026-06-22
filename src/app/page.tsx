@@ -1,8 +1,6 @@
-import BookCard from "@/features/library/BookCard";
+import LibraryGrid from "@/features/library/LibraryGrid";
 import { mockBooks } from "@/features/library/mockBooks";
 
-// TEMPORARY preview scaffold so BookCard can be reviewed visually.
-// This will be replaced by the LibraryGrid component in its own step.
 export default function Home() {
   return (
     <main className="flex-1 px-8 py-16 sm:px-16">
@@ -15,11 +13,7 @@ export default function Home() {
         </h1>
       </header>
 
-      <div className="grid grid-cols-2 gap-x-8 gap-y-12 sm:grid-cols-3 lg:grid-cols-4">
-        {mockBooks.map((book) => (
-          <BookCard key={book.id} book={book} />
-        ))}
-      </div>
+      <LibraryGrid books={mockBooks} />
     </main>
   );
 }

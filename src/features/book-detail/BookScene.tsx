@@ -18,7 +18,11 @@ export default function BookScene({ book }: BookSceneProps) {
   return (
     <Canvas
       dpr={[1, 2]}
-      camera={{ position: [0, 0, 7], fov: 35 }}
+      // Offset to the left so the book is first seen at an angle (front cover
+      // plus a hint of the left edge), and pulled in close so it reads larger
+      // and fills the frame. x:z is kept at the same -0.8 ratio as before, so
+      // the left viewing angle is unchanged — only the distance shrank.
+      camera={{ position: [-4, 1.7, 5], fov: 35 }}
       gl={{ alpha: true, antialias: true }}
       style={{ background: "transparent" }}
     >
@@ -28,7 +32,7 @@ export default function BookScene({ book }: BookSceneProps) {
       <directionalLight position={[3, 4, 5]} intensity={2} color="#fff4e0" />
       {/* ...and a warm gold rim from the left for the brand glow. */}
       <spotLight
-        position={[-4, 2, 3]}
+        position={[-4, 3, 3]}
         intensity={25}
         angle={0.6}
         penumbra={1}
@@ -39,15 +43,15 @@ export default function BookScene({ book }: BookSceneProps) {
         <Book3D book={book} />
       </Suspense>
 
-      {/* Drag to rotate; gentle auto-spin for the "wow". Zoom/pan off so the
-          book stays framed, and polar limits stop it flipping fully over. */}
+      {/* Drag to rotate the book left/right only — no auto-spin. Pinning the
+          polar angle just above horizontal gives a fixed tilt-down view and
+          removes vertical drag in one move (min === max, so the camera can't
+          tilt up or down). Zoom/pan stay off so the book stays framed. */}
       <OrbitControls
         enablePan={false}
         enableZoom={false}
-        autoRotate
-        autoRotateSpeed={1.2}
-        minPolarAngle={Math.PI / 2.6}
-        maxPolarAngle={Math.PI / 1.7}
+        minPolarAngle={Math.PI / 2.4}
+        maxPolarAngle={Math.PI / 2.4}
       />
     </Canvas>
   );

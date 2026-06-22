@@ -53,7 +53,7 @@ export default function BookDetailModal({ book, onClose }: BookDetailModalProps)
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        className="relative flex w-full max-w-3xl flex-col gap-10 overflow-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80 sm:flex-row sm:p-12"
+        className="relative flex w-full max-w-3xl flex-col gap-6 overflow-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80 sm:flex-row sm:gap-10 sm:p-12"
       >
         {/* Close affordance */}
         <button

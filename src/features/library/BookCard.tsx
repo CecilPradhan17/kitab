@@ -2,11 +2,20 @@ import type { Book } from "./mockBooks";
 
 interface BookCardProps {
   book: Book;
+  /** Called when the card is activated (click or keyboard). The grid stays
+      presentational — it just reports the intent up and lets a parent decide
+      what "selecting a book" means. */
+  onSelect: (book: Book) => void;
 }
 
-export default function BookCard({ book }: BookCardProps) {
+export default function BookCard({ book, onSelect }: BookCardProps) {
   return (
-    <article className="group relative flex flex-col">
+    <button
+      type="button"
+      onClick={() => onSelect(book)}
+      aria-label={`Open ${book.title} by ${book.author}`}
+      className="group relative flex w-full flex-col text-left outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-background rounded-lg cursor-pointer"
+    >
       {/* Cover, with an underglow anchored to its bottom edge so the light
           appears to spill out from beneath the book. */}
       <div className="relative">
@@ -68,6 +77,6 @@ export default function BookCard({ book }: BookCardProps) {
         </h3>
         <p className="font-sans text-sm text-muted">{book.author}</p>
       </div>
-    </article>
+    </button>
   );
 }

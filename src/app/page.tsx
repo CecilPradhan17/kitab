@@ -1,4 +1,4 @@
-import LibraryGrid from "@/features/library/LibraryGrid";
+import LibraryView from "@/features/library/LibraryView";
 import { mockBooks } from "@/features/library/mockBooks";
 
 export default function Home() {
@@ -13,7 +13,7 @@ export default function Home() {
         </h1>
       </header>
 
-      <LibraryGrid books={mockBooks} />
+      <LibraryView books={mockBooks} />
     </main>
   );
 }

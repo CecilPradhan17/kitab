@@ -1,12 +1,20 @@
-# Project: Book Read Portfolio
+# Project: Kitab
+
+## App name
+
+**Kitab** — Nepali (and Arabic/Urdu/Hindi) for "book." This name appears
+as the watermark on every story export card, in page titles, and eventually
+in all meta tags. Do not substitute or abbreviate it. Render as "Kitab"
+in regular casing for UI, "KITAB" in small-caps for the export card watermark.
 
 ## What this is
 
-A web app for tracking books read, displayed as an aesthetically premium personal
-library. Each book has a 3D interactive model (shown on click, not in the grid).
-Users can share a public profile link of their library. Users can export a 3D,
-Instagram-Story-style image of a book they just finished (inspired by Strava's
-run-sharing feature), styled like a dark, cinematic, editorial book reveal.
+A web app for tracking books read, displayed as an aesthetically premium
+personal library. Each book has a 3D interactive model (shown on click, not
+in the grid). Users can share a public profile link of their library. Users
+can export a cinematic Instagram-Story-style card of a book they just finished
+(inspired by Strava's run-sharing feature) — dark background, 3D book render,
+gold accents, metadata, and a quote — downloadable as a PNG for sharing.
 
 ## Goals (for Claude Code to keep in mind)
 
@@ -30,7 +38,12 @@ auth, or database work begins.
   `.tsx` (or `.ts` for non-component logic/utilities), not `.js`/`.jsx`.
 - **3D:** Three.js via React Three Fiber (`@react-three/fiber`) +
   `@react-three/drei` (helpers) + `@react-three/postprocessing` (bloom/glow effects)
-- **Image export:** `html-to-image` (client-side only, no server rendering)
+- **Image export:** Hybrid pipeline — offscreen `WebGLRenderer` at 1080×1920
+  captures the Three.js book render as a base64 PNG, which is then injected
+  as a `background-image` into a hidden HTML export card div; `html-to-image`
+  captures the full div (book render + styled metadata/quote overlay) as the
+  final PNG. Client-side only, no server rendering. `preserveDrawingBuffer: true`
+  is required on the export renderer or `toDataURL()` returns blank.
 - **Backend (future, not yet built):** Express + Node + TypeScript + PostgreSQL
 - **Hosting (future):** Railway or Render for the backend; Vercel for the
   Next.js frontend. AWS migration is a deliberate later milestone, not a V1 goal.
@@ -80,20 +93,90 @@ type Book = {
   2D-grid-then-3D-detail avoids this entirely while still delivering the "wow"
   moment where it matters most.
 - **Card glow effect:** Each book card has a single, uniform brand-gold
-  underglow (the `--accent` token). We deliberately decided NOT to extract a
-  per-cover color (e.g. via `fast-average-color`) — a consistent gold glow
-  reinforces the brand and keeps the grid visually calm. Do not reintroduce
-  dynamic color extraction.
+  underglow (#C9973A). We deliberately decided NOT to extract a per-cover color
+  (e.g. via `fast-average-color`) — a consistent gold glow reinforces the brand
+  and keeps the grid visually calm. Do not reintroduce dynamic color extraction
+  in the grid. The glow is a thin, heavily-blurred horizontal ellipse positioned
+  at the bottom edge of the card only (not a diffuse ambient bloom around the
+  whole card), narrower than the card width, simulating light pooling under the
+  book's base. This is a CSS `::after` pseudo-element, not a JS effect.
+  (Per-cover color extraction IS used in the 3D detail view — see spine color
+  below. The two are intentionally different: the grid stays brand-consistent
+  because many books share the screen; the detail view shows one book at a time,
+  where per-book color reads as realism, not noise.)
 - **3D book model:** One reusable mesh/geometry for all books ("cookie cutter"
   approach). Only the cover texture changes per book. Do not generate unique
   geometry per book.
+- **3D book spine/back color:** The spine and back faces are tinted from the
+  cover's dominant hue (not a flat average, which comes out muddy gray), then
+  re-lit to a fixed dark, rich value so they read as the book's edges rather
+  than competing with the cover face. Grayscale covers fall back to a darkened
+  average; a failed read falls back to the dark default. In the current
+  frontend phase this is computed client-side from the loaded cover texture
+  (canvas downscale → dominant-hue vote → re-light). This is intended to move
+  to ingest-time once the backend exists — see image sourcing note below.
 - **Image sourcing (future, not yet built):** When backend work begins, cover
   images will be fetched from Google Books API once per unique ISBN, cached in
   our own storage, and never re-fetched from Google after that. Two stored
   variants per cover: a small display version for the grid, a larger version
-  for the 3D texture. This is a future-phase decision, documented here so it
-  isn't relitigated later — not something to implement during the current
-  frontend-only phase.
+  for the 3D texture. Future phase only — not for current frontend phase.
+- **Spine color computed at ingest (future, not yet built):** When the backend
+  ingests a book and fetches its cover, it will also compute the cover's dominant
+  color and store it as a field on the book (e.g. `spineColor` on the `Book`
+  type). The frontend then reads this via props and drops the client-side
+  extraction entirely. Store the raw dominant hue, not the already-re-lit spine
+  color, so dark/vivid styling can be tuned on the frontend without re-ingesting
+  every book. Server-side the algorithm uses `sharp` (Node has no DOM canvas);
+  the approach (downscale → dominant hue) carries over. Future phase only.
+
+## Story export feature spec (src/features/story-export)
+
+The export card is the app's primary viral/sharing loop. Quality here matters
+enormously — it is what people will see on Instagram Stories.
+
+**Visual composition (9:16, 1080×1920px):**
+
+- Near-black background (`#080706`)
+- Subtle warm radial glow at top center (very faint, not dramatic)
+- 3D book render as hero element, upper half of card, slightly tilted
+  (rotateY ~-22deg, rotateX ~3deg), with spine face and page-edge face visible
+- Gold underglow beneath the book base
+- Book title in Playfair Display, white, centered below the book
+- Author in Inter, gold (#C9973A), small, below title
+- Thin gold-tinted divider line
+- Three metadata columns (Started / Finished / Book #), small-caps Inter labels,
+  light body text
+- Thin gold-tinted divider line
+- Large gold quotation mark, italic Playfair Display quote in muted warm white
+- "KITAB" watermark at bottom in small-caps Inter, flanked by thin divider lines
+
+**Export pipeline:**
+
+1. Spin up offscreen `WebGLRenderer` at 1080×1920 with `preserveDrawingBuffer: true`
+2. Clone existing book geometry + load cover texture at high res
+3. Fixed camera angle + cinematic lighting (not interactive, not user-controlled)
+4. `renderer.render(scene, camera)` → `canvas.toDataURL('image/png')` → base64
+5. Inject base64 as CSS `background-image` on hidden export card div
+6. `html-to-image` captures full div at 1080×1920
+7. Result shown in preview modal
+
+**UX flow:**
+
+- User clicks "Export" on a book (from the 3D modal or the grid card)
+- Loading state shown while offscreen renderer initializes (~0.5–2s) — do not
+  skip the loading indicator or the experience feels broken
+- Preview modal opens showing the full export card
+- Editable quote field below the preview, pre-filled from `book.quote`,
+  user can edit; card re-renders live as they type
+- Three action buttons: "Copy image" / "Download PNG" / "Share" (future)
+- "Share to Instagram" is a future feature — do not implement now, but leave
+  a clearly commented placeholder so it's obvious where it goes
+
+**Font loading gotcha (critical):**
+`html-to-image` will render fallback system fonts if Playfair Display / Inter
+haven't fully loaded at capture time. Must await `document.fonts.ready` (or
+explicitly load fonts via FontFace API) before triggering the capture. This is
+a known failure mode — do not skip it.
 
 ## Folder structure
 
@@ -114,9 +197,9 @@ src/
       LibraryGrid.tsx
       mockBooks.ts
     /book-detail             ← created when this feature is started, not before
-    /story-export             ← created when this feature is started, not before
+    /story-export            ← created when this feature is started, not before
   /components/ui            ← truly shared, generic UI pieces (Button, Modal, etc.)
-  /lib                       ← shared utilities, API clients, etc.
+  /lib                      ← shared utilities, API clients, etc.
 ```
 
 Do not pre-create empty folders for features that haven't been started yet —

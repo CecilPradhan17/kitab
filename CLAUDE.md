@@ -162,13 +162,17 @@ enormously — it is what people will see on Instagram Stories.
 
 **UX flow:**
 
-- User clicks "Export" on a book (from the 3D modal or the grid card)
+- User clicks "Share to story" on a book from the book detail modal
 - Loading state shown while offscreen renderer initializes (~0.5–2s) — do not
   skip the loading indicator or the experience feels broken
 - Preview modal opens showing the full export card
-- Editable quote field below the preview, pre-filled from `book.quote`,
-  user can edit; card re-renders live as they type
-- Three action buttons: "Copy image" / "Download PNG" / "Share" (future)
+- The export preview is **read-only** — it renders the book's current quote
+  (`book.quote`) and is NOT editable here. (Decision change from the original
+  spec: quote editing lives in the book detail modal, not the export preview,
+  so there's a single place to edit. The detail-modal editing feature is
+  deferred — not yet built. `StoryExportCard` keeps an optional `quote` prop
+  ready for it. There is no live-re-render-as-you-type requirement anymore.)
+- Two action buttons: "Copy image" / "Download PNG". "Share" is future.
 - "Share to Instagram" is a future feature — do not implement now, but leave
   a clearly commented placeholder so it's obvious where it goes
 

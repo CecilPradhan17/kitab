@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Book } from "@/features/library/mockBooks";
 import BookScene from "./BookScene";
+import ExportModal from "@/features/story-export/ExportModal";
 
 interface BookDetailModalProps {
   /** The book to show, or null when the modal is closed. Driving the modal off
@@ -20,12 +21,18 @@ function formatMonthYear(iso: string): string {
 }
 
 export default function BookDetailModal({ book, onClose }: BookDetailModalProps) {
+  // Whether the export modal is stacked on top of this detail modal.
+  const [exporting, setExporting] = useState(false);
+
   // Close on Escape, and lock body scroll while the modal is open. Both effects
   // are keyed on `book` so they only run while something is actually selected.
   useEffect(() => {
     if (!book) return;
 
     function handleKeyDown(event: KeyboardEvent) {
+      // While the export modal is open it owns Escape — closing only that
+      // layer — so this one stays put.
+      if (exporting) return;
       if (event.key === "Escape") onClose();
     }
 
@@ -37,13 +44,14 @@ export default function BookDetailModal({ book, onClose }: BookDetailModalProps)
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [book, onClose]);
+  }, [book, onClose, exporting]);
 
   if (!book) return null;
 
   return (
-    // Backdrop. Clicking it closes; clicking the panel does not (the panel
-    // stops propagation). Dialog semantics for assistive tech.
+    <>
+    {/* Backdrop. Clicking it closes; clicking the panel does not (the panel
+        stops propagation). Dialog semantics for assistive tech. */}
     <div
       role="dialog"
       aria-modal="true"
@@ -92,8 +100,26 @@ export default function BookDetailModal({ book, onClose }: BookDetailModalProps)
           <blockquote className="mt-8 border-l-2 border-accent/60 pl-5 font-serif text-lg italic leading-relaxed text-foreground/90">
             &ldquo;{book.quote}&rdquo;
           </blockquote>
+
+          {/* Opens the export preview/share modal, stacked on top of this one. */}
+          <button
+            type="button"
+            onClick={() => setExporting(true)}
+            className="mt-8 inline-flex self-start rounded-full border border-accent/50 px-5 py-2.5 font-sans text-xs uppercase tracking-[0.2em] text-accent outline-none transition-colors hover:bg-accent hover:text-background focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Share to story
+          </button>
         </div>
       </div>
     </div>
+
+    {/* Export modal — a sibling (not a child) of the backdrop so clicks on its
+        own backdrop don't bubble up and close this modal too. Driven by
+        `exporting`; null when closed. */}
+    <ExportModal
+      book={exporting ? book : null}
+      onClose={() => setExporting(false)}
+    />
+    </>
   );
 }

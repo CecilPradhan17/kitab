@@ -1,0 +1,249 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { toPng } from "html-to-image";
+import type { Book } from "@/features/library/mockBooks";
+import { renderBookToDataURL } from "./renderBook";
+import StoryExportCard, { CARD_WIDTH, CARD_HEIGHT } from "./StoryExportCard";
+
+// Scale the 1080×1920 card down to a comfortable on-screen preview. The capture
+// always happens off the full-size (un-scaled) node, so this only affects what
+// the user sees, never the exported pixels.
+const PREVIEW_SCALE = 0.33;
+
+interface ExportModalProps {
+  /** The book to export, or null when closed — same single-source-of-truth
+      pattern as BookDetailModal (no separate "open" boolean). */
+  book: Book | null;
+  onClose: () => void;
+}
+
+/** The export preview + share modal. On open it kicks off the offscreen 3D
+    render, shows the resulting StoryExportCard, and lets the user copy or
+    download it as a 1080×1920 PNG. Read-only here — the quote shown is whatever
+    the book already has (quote editing will live in the detail modal later). */
+export default function ExportModal({ book, onClose }: ExportModalProps) {
+  // The 3D hero PNG, produced once per open. null while it's still rendering.
+  const [heroSrc, setHeroSrc] = useState<string | null>(null);
+  const [renderError, setRenderError] = useState<string | null>(null);
+  // Transient action state for the buttons.
+  const [busy, setBusy] = useState<"copy" | "download" | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // The hidden, full-size card node that html-to-image captures from. Kept
+  // separate from the visible (scaled) preview so capture never has to undo a
+  // CSS transform.
+  const captureRef = useRef<HTMLDivElement>(null);
+
+  // Render the 3D hero whenever a book opens. Reset all state first so a
+  // re-open (or switching books) never shows the previous book's render.
+  useEffect(() => {
+    if (!book) return;
+    let cancelled = false;
+
+    setHeroSrc(null);
+    setRenderError(null);
+    setCopied(false);
+
+    renderBookToDataURL(book)
+      .then((url) => {
+        if (!cancelled) setHeroSrc(url);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setRenderError(err instanceof Error ? err.message : String(err));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [book]);
+
+  // Escape closes the export modal. The detail modal underneath suppresses its
+  // own Escape handler while this is open, so one press closes one layer.
+  useEffect(() => {
+    if (!book) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [book, onClose]);
+
+  if (!book) return null;
+
+  /** Render the full-size card node to a 1080×1920 PNG data URL. Awaiting
+      document.fonts.ready is critical: html-to-image will silently fall back to
+      system fonts if Playfair/Inter aren't loaded at capture time (CLAUDE.md). */
+  async function capturePng(): Promise<string> {
+    await document.fonts.ready;
+    const node = captureRef.current;
+    if (!node) throw new Error("Export card not mounted");
+    // pixelRatio 1 so the output is exactly CARD_WIDTH×CARD_HEIGHT (the hero is
+    // already rendered at high res, so it stays crisp).
+    return toPng(node, {
+      width: CARD_WIDTH,
+      height: CARD_HEIGHT,
+      pixelRatio: 1,
+      cacheBust: true,
+    });
+  }
+
+  async function handleDownload() {
+    setBusy("download");
+    try {
+      const dataUrl = await capturePng();
+      const link = document.createElement("a");
+      link.download = `kitab-${book!.title.toLowerCase().replace(/\s+/g, "-")}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      setRenderError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function handleCopy() {
+    setBusy("copy");
+    try {
+      // Safari invalidates the user-gesture as soon as you `await` before
+      // calling clipboard.write, so we can't capture-then-write. Instead pass a
+      // Promise<Blob> as the ClipboardItem value and call write synchronously,
+      // within the click's gesture — Safari resolves the promise itself, and
+      // Chrome supports the same pattern.
+      const pngBlob = (async () => {
+        const dataUrl = await capturePng();
+        return (await fetch(dataUrl)).blob();
+      })();
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": pngBlob }),
+      ]);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      // Clipboard image write isn't supported in every browser; surface it
+      // rather than failing silently.
+      setRenderError(
+        err instanceof Error
+          ? `Couldn't copy image: ${err.message}`
+          : String(err),
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  // TODO(share): "Share to Instagram" goes here — likely the Web Share API
+  // (navigator.share with the PNG as a File) on supported mobile browsers.
+  // Intentionally not implemented yet (CLAUDE.md).
+
+  const isRendering = !heroSrc && !renderError;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Export ${book.title}`}
+      onClick={onClose}
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-6 backdrop-blur-sm"
+    >
+      <div
+        onClick={(event) => event.stopPropagation()}
+        className="relative flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80"
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <span aria-hidden className="text-xl leading-none">
+            &times;
+          </span>
+        </button>
+
+        <h2 className="font-sans text-[0.7rem] uppercase tracking-[0.25em] text-accent">
+          Share to story
+        </h2>
+
+        {/* Preview area, sized to the scaled card so layout is stable whether
+            we're showing a spinner, an error, or the finished card. The card is
+            scaled from its top-left corner: a CSS transform doesn't shrink the
+            element's 1080×1920 layout box, so it must NOT be flex-centered here
+            (that would center the full-size box and clip it away) — it's pinned
+            to the corner and fills the sized container exactly. */}
+        <div
+          className="relative overflow-hidden rounded-lg"
+          style={{
+            width: CARD_WIDTH * PREVIEW_SCALE,
+            height: CARD_HEIGHT * PREVIEW_SCALE,
+          }}
+        >
+          {renderError ? (
+            <div className="flex h-full w-full items-center justify-center">
+              <p className="px-4 text-center font-sans text-xs text-red-400">
+                {renderError}
+              </p>
+            </div>
+          ) : isRendering ? (
+            <div className="flex h-full w-full items-center justify-center">
+              <p className="animate-pulse font-sans text-[0.7rem] uppercase tracking-[0.25em] text-muted">
+                Rendering…
+              </p>
+            </div>
+          ) : (
+            <div
+              style={{
+                transform: `scale(${PREVIEW_SCALE})`,
+                transformOrigin: "top left",
+              }}
+            >
+              <StoryExportCard book={book} heroSrc={heroSrc!} />
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex w-full items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={handleCopy}
+            disabled={isRendering || busy !== null || !!renderError}
+            className="flex-1 rounded-full border border-accent/50 px-4 py-2.5 font-sans text-xs uppercase tracking-[0.2em] text-accent transition-colors hover:bg-accent hover:text-background disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-accent"
+          >
+            {copied ? "Copied" : busy === "copy" ? "Copying…" : "Copy image"}
+          </button>
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={isRendering || busy !== null || !!renderError}
+            className="flex-1 rounded-full bg-accent px-4 py-2.5 font-sans text-xs uppercase tracking-[0.2em] text-background transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {busy === "download" ? "Saving…" : "Download PNG"}
+          </button>
+        </div>
+      </div>
+
+      {/* Hidden full-size capture source. Positioned off-screen (not display:none
+          / visibility:hidden, which html-to-image captures as blank) so it
+          renders at true 1080×1920 for a 1:1 capture. */}
+      {heroSrc && (
+        <div
+          aria-hidden
+          style={{
+            position: "fixed",
+            top: 0,
+            left: -99999,
+            pointerEvents: "none",
+          }}
+        >
+          <div ref={captureRef}>
+            <StoryExportCard book={book} heroSrc={heroSrc} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

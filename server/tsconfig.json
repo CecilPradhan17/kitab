@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    /* Output a recent JS version — Node 18+ supports all of ES2022. */
+    "target": "ES2022",
+    "lib": ["ES2022"],
+
+    /* CommonJS keeps imports simple (no ".js" extension needed in import paths),
+       which is one less gotcha while learning. tsx runs CommonJS fine in dev. */
+    "module": "CommonJS",
+    "moduleResolution": "node",
+
+    /* Compiled output goes to dist/, source lives in src/. */
+    "rootDir": "src",
+    "outDir": "dist",
+
+    /* Strictness — we want the compiler catching mistakes, not hiding them. */
+    "strict": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src"]
+}

@@ -27,9 +27,35 @@ gold accents, metadata, and a quote — downloadable as a PNG for sharing.
 
 ## Current phase
 
-**Frontend prototyping only. No backend yet.** Building standalone, presentational
-components against mock data to validate the look and feel before any backend,
-auth, or database work begins.
+**Backend started.** The frontend prototype is considered visually validated
+("look and feel locked"), so backend work has begun. The Express API lives in
+`server/` (same repo as the Next.js app — see below). The frontend still runs
+on mock data; it will be wired to the API once read endpoints exist.
+
+## Backend decisions (locked in, with reasoning)
+
+- **Express, not Next.js route handlers.** Next.js route handlers could
+  technically serve this app's CRUD needs more simply (shared types, one
+  deploy). Express was chosen deliberately because this is a portfolio project
+  meant to demonstrate full-stack range — building a standalone REST API is a
+  stronger, more explicit backend signal than framework-coupled route handlers,
+  and a long-running server holds a clean Postgres connection pool (serverless
+  route handlers need external pooling). The value is the demonstration, not a
+  functional necessity — and being able to articulate that tradeoff is itself
+  the point.
+- **Repo layout:** `server/` folder in this same repo, with its own
+  `package.json`/`tsconfig.json` (independent deps, deployable on its own to
+  Railway/Render while Vercel hosts the frontend). Not a separate repo —
+  unnecessary overhead for a solo project.
+- **DB layer: raw `pg` + hand-written SQL.** No ORM. Chosen for maximum
+  learning and explainability — we want to actually know SQL and exactly what
+  hits the database, not an ORM's DSL. More boilerplate (manual types and
+  migrations) is the accepted cost.
+- **Local Postgres via Docker** (docker-compose), so dev mirrors prod and
+  nothing is installed system-wide.
+- **TypeScript config:** CommonJS module output (avoids the `.js`-extension-in-
+  imports gotcha while learning); `strict` on. Dev runs via `tsx watch`;
+  production path is `tsc` build → `node dist`.
 
 ## Tech stack (decided, do not change without discussion)
 

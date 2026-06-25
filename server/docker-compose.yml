@@ -1,0 +1,38 @@
+# Local Postgres for development. Run from server/ with: docker compose up -d
+#
+# On the FIRST boot of a fresh volume, Postgres auto-runs every *.sql file in
+# /docker-entrypoint-initdb.d (we mount ./db there) in alphabetical order — so
+# 01_schema.sql then 02_seed.sql. This means `docker compose up` alone creates
+# and seeds the database; there is no manual psql step.
+#
+# These init scripts ONLY run on a fresh (empty) data volume. To re-apply after
+# changing the schema or seed:  docker compose down -v && docker compose up -d
+# (the -v removes the named volume below, which is what makes the volume "fresh").
+
+services:
+  db:
+    image: postgres:17
+    container_name: kitab-db
+    restart: unless-stopped
+    environment:
+      # Local-dev credentials only — never reused in production.
+      POSTGRES_USER: kitab
+      POSTGRES_PASSWORD: kitab
+      POSTGRES_DB: kitab
+    ports:
+      - "5432:5432"
+    volumes:
+      # Named volume: data survives `docker compose down`, lost only with `down -v`.
+      - kitab-pgdata:/var/lib/postgresql/data
+      # Init scripts, run once on fresh volume (see note above).
+      - ./db:/docker-entrypoint-initdb.d
+    healthcheck:
+      # Lets us (and `docker compose up --wait`) know when Postgres truly accepts
+      # connections, not just when the container has started.
+      test: ["CMD-SHELL", "pg_isready -U kitab -d kitab"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  kitab-pgdata:

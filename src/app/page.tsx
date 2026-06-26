@@ -1,7 +1,9 @@
 import LibraryView from "@/features/library/LibraryView";
-import { mockBooks } from "@/features/library/mockBooks";
+import { getBooks } from "@/features/library/booksApi";
 
-export default function Home() {
+export default async function Home() {
+  const books = await getBooks();
+
   return (
     <main className="flex-1 px-8 py-16 sm:px-16">
       <header className="mb-12">
@@ -13,7 +15,7 @@ export default function Home() {
         </h1>
       </header>
 
-      <LibraryView books={mockBooks} />
+      <LibraryView books={books} />
     </main>
   );
 }

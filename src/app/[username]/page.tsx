@@ -1,13 +1,15 @@
 import ProfileHeader from "@/features/profile/ProfileHeader";
 import { mockProfile } from "@/features/profile/mockProfile";
 import LibraryView from "@/features/library/LibraryView";
-import { mockBooks } from "@/features/library/mockBooks";
+import { getBooks } from "@/features/library/booksApi";
 
 /** Public profile page — the shareable front door of a user's library.
     Mock-data phase: the [username] route param is intentionally ignored and the
-    same mock profile renders regardless of the URL. This gets replaced with a
-    real fetch keyed on the username once the backend exists. */
-export default function ProfilePage() {
+    same mock profile renders regardless of the URL. The books now come from the
+    API; the profile is still mock until the profiles endpoint exists. */
+export default async function ProfilePage() {
+  const books = await getBooks();
+
   return (
     <main className="flex-1">
       <ProfileHeader profile={mockProfile} />
@@ -22,7 +24,7 @@ export default function ProfilePage() {
           </h2>
         </header>
 
-        <LibraryView books={mockBooks} />
+        <LibraryView books={books} />
       </section>
     </main>
   );

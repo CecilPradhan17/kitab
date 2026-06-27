@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import { booksRouter } from "./routes/books";
+import { bookSearchRouter } from "./routes/bookSearch";
 
 /**
  * Builds and configures the Express application.
@@ -21,6 +22,7 @@ export function createApp(): Express {
 
   // Feature routers, mounted under /api.
   app.use("/api/books", booksRouter);
+  app.use("/api/book-search", bookSearchRouter);
 
   return app;
 }

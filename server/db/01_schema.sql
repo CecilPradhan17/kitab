@@ -10,6 +10,10 @@ CREATE TABLE IF NOT EXISTS books (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title         TEXT    NOT NULL,
   author        TEXT    NOT NULL,
+  -- ISBN-13 of the selected edition. Nullable (not every Open Library result
+  -- has one), but the add-book flow requires it: it's how we build the cover
+  -- URL and how future ingest will dedupe/cache covers per unique ISBN.
+  isbn          TEXT,
   cover_url     TEXT    NOT NULL,
   date_started  DATE,
   date_finished DATE,

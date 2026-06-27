@@ -247,6 +247,10 @@ add a feature folder when work on that feature actually begins.
 - After any visual/UI change, do not declare it "done" based on absence of
   console errors alone — visual correctness must be confirmed by the developer
   looking at it.
+- When writing commit messages, do NOT use double quotes (`"`) inside the
+  message body. The developer commits with `git commit -m "..."`, and an inner
+  double quote prematurely closes the shell string and breaks the command. Use
+  single quotes (`'...'`) for any quoting inside the message instead.
 
 ## How Claude Code should work with the developer
 

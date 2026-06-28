@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { Book } from "@/features/library/mockBooks";
 import BookScene from "./BookScene";
 import ExportModal from "@/features/story-export/ExportModal";
+import { updateBookQuote } from "./bookDetailApi";
 
 interface BookDetailModalProps {
   /** The book to show, or null when the modal is closed. Driving the modal off
@@ -11,6 +12,9 @@ interface BookDetailModalProps {
       source of truth — there's no way to be "open" with no book. */
   book: Book | null;
   onClose: () => void;
+  /** Called with the updated book after an edit (e.g. the quote), so the parent
+      can sync its copy and refresh. Keeps this modal from owning library state. */
+  onBookUpdated: (book: Book) => void;
 }
 
 /** Format an ISO date (e.g. "2024-05-12") as "May 2024" for the editorial
@@ -20,9 +24,50 @@ function formatMonthYear(iso: string): string {
   return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
-export default function BookDetailModal({ book, onClose }: BookDetailModalProps) {
+export default function BookDetailModal({ book, onClose, onBookUpdated }: BookDetailModalProps) {
   // Whether the export modal is stacked on top of this detail modal.
   const [exporting, setExporting] = useState(false);
+
+  // Inline quote-editing state.
+  const [editingQuote, setEditingQuote] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [savingQuote, setSavingQuote] = useState(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+
+  // Leave edit mode whenever the shown book changes (switch or close), so the
+  // editor never carries one book's draft over to another.
+  useEffect(() => {
+    setEditingQuote(false);
+    setQuoteError(null);
+  }, [book?.id]);
+
+  function startEditingQuote() {
+    if (!book) return;
+    setDraft(book.quote);
+    setQuoteError(null);
+    setEditingQuote(true);
+  }
+
+  async function handleSaveQuote() {
+    if (!book) return;
+    const trimmed = draft.trim();
+    if (trimmed === "") {
+      setQuoteError("Quote can't be empty.");
+      return;
+    }
+
+    setSavingQuote(true);
+    setQuoteError(null);
+    try {
+      const updated = await updateBookQuote(book.id, trimmed);
+      onBookUpdated(updated); // sync parent (modal + export card read from it)
+      setEditingQuote(false);
+    } catch {
+      setQuoteError("Couldn't save. Please try again.");
+    } finally {
+      setSavingQuote(false);
+    }
+  }
 
   // Close on Escape, and lock body scroll while the modal is open. Both effects
   // are keyed on `book` so they only run while something is actually selected.
@@ -33,7 +78,14 @@ export default function BookDetailModal({ book, onClose }: BookDetailModalProps)
       // While the export modal is open it owns Escape — closing only that
       // layer — so this one stays put.
       if (exporting) return;
-      if (event.key === "Escape") onClose();
+      if (event.key !== "Escape") return;
+      // If the quote editor is open, Escape cancels the edit first rather than
+      // closing the whole modal.
+      if (editingQuote) {
+        setEditingQuote(false);
+        return;
+      }
+      onClose();
     }
 
     document.addEventListener("keydown", handleKeyDown);
@@ -44,7 +96,7 @@ export default function BookDetailModal({ book, onClose }: BookDetailModalProps)
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [book, onClose, exporting]);
+  }, [book, onClose, exporting, editingQuote]);
 
   if (!book) return null;
 
@@ -97,9 +149,52 @@ export default function BookDetailModal({ book, onClose }: BookDetailModalProps)
             {formatMonthYear(book.dateFinished)}
           </p>
 
-          <blockquote className="mt-8 border-l-2 border-accent/60 pl-5 font-serif text-lg italic leading-relaxed text-foreground/90">
-            &ldquo;{book.quote}&rdquo;
-          </blockquote>
+          {editingQuote ? (
+            <div className="mt-8 flex flex-col gap-3">
+              <textarea
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                rows={3}
+                autoFocus
+                className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-serif text-lg italic leading-relaxed text-foreground/90 outline-none transition-colors focus:border-accent/60"
+              />
+
+              {quoteError && (
+                <p className="font-sans text-sm text-red-400/80">{quoteError}</p>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleSaveQuote}
+                  disabled={savingQuote}
+                  className="inline-flex rounded-full border border-accent/50 px-5 py-2 font-sans text-xs uppercase tracking-[0.2em] text-accent outline-none transition-colors hover:bg-accent hover:text-background focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-accent"
+                >
+                  {savingQuote ? "Saving…" : "Save"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingQuote(false)}
+                  className="inline-flex rounded-full px-5 py-2 font-sans text-xs uppercase tracking-[0.2em] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-8">
+              <blockquote className="border-l-2 border-accent/60 pl-5 font-serif text-lg italic leading-relaxed text-foreground/90">
+                &ldquo;{book.quote}&rdquo;
+              </blockquote>
+              <button
+                type="button"
+                onClick={startEditingQuote}
+                className="mt-3 font-sans text-xs uppercase tracking-[0.2em] text-accent outline-none transition-colors hover:text-foreground focus-visible:underline"
+              >
+                Edit quote
+              </button>
+            </div>
+          )}
 
           {/* Opens the export preview/share modal, stacked on top of this one. */}
           <button

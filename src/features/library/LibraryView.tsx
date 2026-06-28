@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Book } from "./mockBooks";
 import LibraryGrid from "./LibraryGrid";
 import BookDetailModal from "@/features/book-detail/BookDetailModal";
@@ -15,6 +16,14 @@ interface LibraryViewProps {
     stateful piece — it can stay a server-rendered page above this boundary. */
 export default function LibraryView({ books }: LibraryViewProps) {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const router = useRouter();
+
+  // After an edit, update the open book (so the modal and export card reflect it
+  // immediately) and refresh the server data (so the grid is fresh on reopen).
+  function handleBookUpdated(updated: Book) {
+    setSelectedBook(updated);
+    router.refresh();
+  }
 
   return (
     <>
@@ -22,6 +31,7 @@ export default function LibraryView({ books }: LibraryViewProps) {
       <BookDetailModal
         book={selectedBook}
         onClose={() => setSelectedBook(null)}
+        onBookUpdated={handleBookUpdated}
       />
     </>
   );

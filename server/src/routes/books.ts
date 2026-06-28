@@ -122,3 +122,47 @@ booksRouter.post("/", async (req, res) => {
     res.status(500).json({ error: "Failed to add book" });
   }
 });
+
+// PATCH /api/books/:id — edit a book's quote.
+//
+// Scoped to the quote alone: it's the only field the detail modal edits. A more
+// general partial-update endpoint can come later if other fields become editable.
+booksRouter.patch("/:id", async (req, res) => {
+  const { id } = req.params;
+  const { quote } = req.body ?? {};
+
+  // Quote stays required (every book has one) — reject empty just like add does.
+  if (typeof quote !== "string" || quote.trim() === "") {
+    return res.status(400).json({ error: "quote is required" });
+  }
+
+  try {
+    const result = await pool.query<Book>(
+      `UPDATE books
+       SET quote = $1
+       WHERE id = $2
+       RETURNING id, title, author,
+                 cover_url           AS "coverUrl",
+                 date_started::text  AS "dateStarted",
+                 date_finished::text AS "dateFinished",
+                 book_number         AS "bookNumber",
+                 quote;`,
+      [quote.trim(), id]
+    );
+
+    // No row matched — the id is well-formed but not in the table.
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Book not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    // 22P02 = invalid text representation, i.e. id isn't a valid UUID. That's a
+    // bad request, not a server fault.
+    if (err instanceof Error && "code" in err && err.code === "22P02") {
+      return res.status(400).json({ error: "Invalid book id" });
+    }
+    console.error("PATCH /api/books/:id failed:", err);
+    res.status(500).json({ error: "Failed to update book" });
+  }
+});

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import AddBookModal from "./AddBookModal";
 
 /** Self-contained add-book entry point: the trigger button plus the modal it
@@ -9,6 +10,7 @@ import AddBookModal from "./AddBookModal";
     the page to refresh. */
 export default function AddBookButton() {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
 
   return (
     <>
@@ -23,7 +25,11 @@ export default function AddBookButton() {
         Add book
       </button>
 
-      <AddBookModal open={open} onClose={() => setOpen(false)} />
+      <AddBookModal
+        open={open}
+        onClose={() => setOpen(false)}
+        onAdded={() => router.refresh()}
+      />
     </>
   );
 }

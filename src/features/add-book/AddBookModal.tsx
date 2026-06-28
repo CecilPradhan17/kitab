@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { searchBooks, type BookSearchResult } from "./addBookApi";
+import { addBook, searchBooks, type BookSearchResult } from "./addBookApi";
 
 interface AddBookModalProps {
   /** Whether the modal is open. Driven by the parent (AddBookButton). */
   open: boolean;
   onClose: () => void;
+  /** Called after a book is successfully added, so the parent can refresh the
+      (server-rendered) grid. The modal itself stays unaware of how data loads. */
+  onAdded: () => void;
 }
 
 // Wait this long after the last keystroke before searching, so typing a query
@@ -17,7 +20,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 // hammering the API on the first character or two.
 const MIN_QUERY_LENGTH = 2;
 
-export default function AddBookModal({ open, onClose }: AddBookModalProps) {
+export default function AddBookModal({ open, onClose, onAdded }: AddBookModalProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -25,6 +28,13 @@ export default function AddBookModal({ open, onClose }: AddBookModalProps) {
 
   // The book the user picked from search results. null = still in search phase.
   const [selected, setSelected] = useState<BookSearchResult | null>(null);
+
+  // Details-phase form state.
+  const [dateStarted, setDateStarted] = useState("");
+  const [dateFinished, setDateFinished] = useState("");
+  const [quote, setQuote] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Close on Escape and lock body scroll while open — mirrors BookDetailModal.
   useEffect(() => {
@@ -52,6 +62,11 @@ export default function AddBookModal({ open, onClose }: AddBookModalProps) {
       setSearching(false);
       setError(null);
       setSelected(null);
+      setDateStarted("");
+      setDateFinished("");
+      setQuote("");
+      setSubmitting(false);
+      setSubmitError(null);
     }
   }, [open]);
 
@@ -99,6 +114,41 @@ export default function AddBookModal({ open, onClose }: AddBookModalProps) {
   useEffect(() => {
     if (open && !selected) inputRef.current?.focus();
   }, [open, selected]);
+
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected) return;
+
+    // Client-side validation mirroring the server's: all fields required and
+    // finished can't precede started. The server validates again regardless —
+    // this just gives instant feedback without a round-trip.
+    if (!dateStarted || !dateFinished || quote.trim() === "") {
+      setSubmitError("Please fill in both dates and a quote.");
+      return;
+    }
+    if (dateFinished < dateStarted) {
+      setSubmitError("Finished date can't be before the started date.");
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await addBook({
+        title: selected.title,
+        author: selected.author,
+        isbn: selected.isbn,
+        dateStarted,
+        dateFinished,
+        quote: quote.trim(),
+      });
+      onAdded(); // refresh the grid
+      onClose(); // and dismiss (which also resets all state)
+    } catch {
+      setSubmitError("Something went wrong adding the book. Please try again.");
+      setSubmitting(false);
+    }
+  }
 
   if (!open) return null;
 
@@ -156,9 +206,57 @@ export default function AddBookModal({ open, onClose }: AddBookModalProps) {
               </div>
             </div>
 
-            <p className="mt-8 font-sans text-sm italic text-muted">
-              Dates &amp; quote form — coming next (3b).
-            </p>
+            <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
+              <div className="flex gap-4">
+                <label className="flex flex-1 flex-col gap-1.5">
+                  <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
+                    Started
+                  </span>
+                  <input
+                    type="date"
+                    value={dateStarted}
+                    onChange={(event) => setDateStarted(event.target.value)}
+                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-sans text-sm text-foreground outline-none transition-colors focus:border-accent/60 [color-scheme:dark]"
+                  />
+                </label>
+                <label className="flex flex-1 flex-col gap-1.5">
+                  <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
+                    Finished
+                  </span>
+                  <input
+                    type="date"
+                    value={dateFinished}
+                    onChange={(event) => setDateFinished(event.target.value)}
+                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-sans text-sm text-foreground outline-none transition-colors focus:border-accent/60 [color-scheme:dark]"
+                  />
+                </label>
+              </div>
+
+              <label className="flex flex-col gap-1.5">
+                <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
+                  Quote
+                </span>
+                <textarea
+                  value={quote}
+                  onChange={(event) => setQuote(event.target.value)}
+                  rows={3}
+                  placeholder="A line worth remembering…"
+                  className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-serif text-base italic leading-relaxed text-foreground placeholder:not-italic placeholder:font-sans placeholder:text-sm placeholder:text-muted/60 outline-none transition-colors focus:border-accent/60"
+                />
+              </label>
+
+              {submitError && (
+                <p className="font-sans text-sm text-red-400/80">{submitError}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="mt-1 inline-flex self-start rounded-full border border-accent/50 px-6 py-2.5 font-sans text-xs uppercase tracking-[0.2em] text-accent outline-none transition-colors hover:bg-accent hover:text-background focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-accent"
+              >
+                {submitting ? "Adding…" : "Add to library"}
+              </button>
+            </form>
           </div>
         ) : (
           /* ---- Search phase ---- */

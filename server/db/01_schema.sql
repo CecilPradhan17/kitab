@@ -17,6 +17,14 @@ CREATE TABLE IF NOT EXISTS books (
   cover_url     TEXT    NOT NULL,
   date_started  DATE,
   date_finished DATE,
-  book_number   INTEGER NOT NULL,
-  quote         TEXT
+  quote         TEXT,
+  -- Insertion time, stamped by the DB. Used only as a tiebreaker when two books
+  -- share the same date_finished, so ordering stays deterministic. (id is a
+  -- final backstop after this, for the rare case created_at also ties.)
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Note: there is deliberately no book_number column. A book's number ("#1, #2,
+-- …") is not stored — it's derived on the frontend from the order books are
+-- returned in (by date_finished, then created_at, then id). That keeps deletes
+-- to a single-row delete with no resequencing, and inserts need no MAX+1 work.

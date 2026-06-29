@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { Book } from "@/features/library/mockBooks";
 import BookScene from "./BookScene";
 import ExportModal from "@/features/story-export/ExportModal";
-import { updateBookQuote } from "./bookDetailApi";
+import { deleteBook, updateBookQuote } from "./bookDetailApi";
 
 interface BookDetailModalProps {
   /** The book to show, or null when the modal is closed. Driving the modal off
@@ -15,6 +15,9 @@ interface BookDetailModalProps {
   /** Called with the updated book after an edit (e.g. the quote), so the parent
       can sync its copy and refresh. Keeps this modal from owning library state. */
   onBookUpdated: (book: Book) => void;
+  /** Called after a book is deleted, so the parent can close this view and
+      refresh the grid (the deleted book is gone, and numbers re-derive). */
+  onBookDeleted: () => void;
 }
 
 /** Format an ISO date (e.g. "2024-05-12") as "May 2024" for the editorial
@@ -24,7 +27,12 @@ function formatMonthYear(iso: string): string {
   return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
-export default function BookDetailModal({ book, onClose, onBookUpdated }: BookDetailModalProps) {
+export default function BookDetailModal({
+  book,
+  onClose,
+  onBookUpdated,
+  onBookDeleted,
+}: BookDetailModalProps) {
   // Whether the export modal is stacked on top of this detail modal.
   const [exporting, setExporting] = useState(false);
 
@@ -34,11 +42,18 @@ export default function BookDetailModal({ book, onClose, onBookUpdated }: BookDe
   const [savingQuote, setSavingQuote] = useState(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
 
-  // Leave edit mode whenever the shown book changes (switch or close), so the
-  // editor never carries one book's draft over to another.
+  // Inline delete-confirmation state.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Leave edit/confirm modes whenever the shown book changes (switch or close),
+  // so neither carries over from one book to another.
   useEffect(() => {
     setEditingQuote(false);
     setQuoteError(null);
+    setConfirmingDelete(false);
+    setDeleteError(null);
   }, [book?.id]);
 
   function startEditingQuote() {
@@ -60,12 +75,27 @@ export default function BookDetailModal({ book, onClose, onBookUpdated }: BookDe
     setQuoteError(null);
     try {
       const updated = await updateBookQuote(book.id, trimmed);
-      onBookUpdated(updated); // sync parent (modal + export card read from it)
+      // The PATCH response omits bookNumber (it's derived), so keep the book's
+      // current number — editing a quote can't change its order anyway.
+      onBookUpdated({ ...updated, bookNumber: book.bookNumber });
       setEditingQuote(false);
     } catch {
       setQuoteError("Couldn't save. Please try again.");
     } finally {
       setSavingQuote(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!book) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteBook(book.id);
+      onBookDeleted(); // parent closes this view and refreshes the grid
+    } catch {
+      setDeleteError("Couldn't delete. Please try again.");
+      setDeleting(false);
     }
   }
 
@@ -79,10 +109,14 @@ export default function BookDetailModal({ book, onClose, onBookUpdated }: BookDe
       // layer — so this one stays put.
       if (exporting) return;
       if (event.key !== "Escape") return;
-      // If the quote editor is open, Escape cancels the edit first rather than
-      // closing the whole modal.
+      // An open editor or a pending delete confirmation owns Escape first —
+      // it backs out that step rather than closing the whole modal.
       if (editingQuote) {
         setEditingQuote(false);
+        return;
+      }
+      if (confirmingDelete) {
+        setConfirmingDelete(false);
         return;
       }
       onClose();
@@ -96,7 +130,7 @@ export default function BookDetailModal({ book, onClose, onBookUpdated }: BookDe
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [book, onClose, exporting, editingQuote]);
+  }, [book, onClose, exporting, editingQuote, confirmingDelete]);
 
   if (!book) return null;
 
@@ -204,6 +238,47 @@ export default function BookDetailModal({ book, onClose, onBookUpdated }: BookDe
           >
             Share to story
           </button>
+
+          {/* Delete affordance — de-emphasised, with an inline two-step confirm
+              since the action is destructive and can't be undone. */}
+          <div className="mt-auto pt-8">
+            {confirmingDelete ? (
+              <div className="flex flex-col gap-3">
+                <p className="font-sans text-sm text-muted">
+                  Remove <span className="text-foreground">{book.title}</span>{" "}
+                  from your library? This can&rsquo;t be undone.
+                </p>
+                {deleteError && (
+                  <p className="font-sans text-sm text-red-400/80">{deleteError}</p>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="inline-flex rounded-full border border-red-400/40 px-5 py-2 font-sans text-xs uppercase tracking-[0.2em] text-red-300/90 outline-none transition-colors hover:bg-red-400/90 hover:text-background focus-visible:ring-2 focus-visible:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-red-300/90"
+                  >
+                    {deleting ? "Deleting…" : "Delete"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDelete(false)}
+                    className="inline-flex rounded-full px-5 py-2 font-sans text-xs uppercase tracking-[0.2em] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                className="font-sans text-xs uppercase tracking-[0.2em] text-muted outline-none transition-colors hover:text-red-300/90 focus-visible:underline"
+              >
+                Remove from library
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

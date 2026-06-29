@@ -45,11 +45,11 @@ export interface AddBookInput {
 }
 
 /**
- * Add a book to the library. POSTs to Express and returns the created book
- * (in the canonical Book shape). The grid is refreshed separately by the
- * caller — this function only persists.
+ * Add a book to the library. POSTs to Express and returns the created book.
+ * The response omits bookNumber (it's derived on read), and the caller refreshes
+ * the grid rather than using this return value to render — this only persists.
  */
-export async function addBook(input: AddBookInput): Promise<Book> {
+export async function addBook(input: AddBookInput): Promise<Omit<Book, "bookNumber">> {
   const res = await fetch(`${API_URL}/api/books`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

@@ -25,6 +25,13 @@ export default function LibraryView({ books }: LibraryViewProps) {
     router.refresh();
   }
 
+  // After a delete, close the detail view and refresh so the grid drops the book
+  // and the (derived) numbers re-sequence.
+  function handleBookDeleted() {
+    setSelectedBook(null);
+    router.refresh();
+  }
+
   return (
     <>
       <LibraryGrid books={books} onSelectBook={setSelectedBook} />
@@ -32,6 +39,7 @@ export default function LibraryView({ books }: LibraryViewProps) {
         book={selectedBook}
         onClose={() => setSelectedBook(null)}
         onBookUpdated={handleBookUpdated}
+        onBookDeleted={handleBookDeleted}
       />
     </>
   );

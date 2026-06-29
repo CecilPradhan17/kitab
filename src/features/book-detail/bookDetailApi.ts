@@ -7,10 +7,14 @@ import type { Book } from "@/features/library/mockBooks";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 /**
- * Update a book's quote. PATCHes Express and returns the updated book (in the
- * canonical Book shape) so the caller can sync its local copy.
+ * Update a book's quote. PATCHes Express and returns the updated book so the
+ * caller can sync its local copy. The response omits bookNumber (it's derived),
+ * so the caller keeps the book's existing number when merging.
  */
-export async function updateBookQuote(id: string, quote: string): Promise<Book> {
+export async function updateBookQuote(
+  id: string,
+  quote: string
+): Promise<Omit<Book, "bookNumber">> {
   const res = await fetch(`${API_URL}/api/books/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -22,4 +26,16 @@ export async function updateBookQuote(id: string, quote: string): Promise<Book> 
   }
 
   return res.json();
+}
+
+/**
+ * Delete a book. The 204 response has no body, so there's nothing to return.
+ * The caller closes the detail view and refreshes the grid.
+ */
+export async function deleteBook(id: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/books/${id}`, { method: "DELETE" });
+
+  if (!res.ok) {
+    throw new Error(`Failed to delete book: ${res.status} ${res.statusText}`);
+  }
 }

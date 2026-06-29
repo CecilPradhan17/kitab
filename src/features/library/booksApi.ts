@@ -11,6 +11,11 @@ const API_URL = process.env.API_URL ?? "http://localhost:4000";
  * The single point where the app talks to the books endpoint. Components stay
  * presentational (props in) and never know the data came from here vs. mock
  * data — swapping the source is this one function.
+ *
+ * The API doesn't store or return a book number — it returns books already in
+ * reading order (by date_finished). This function assigns the number by
+ * position, so #1 is the earliest-finished book. Components keep reading
+ * `book.bookNumber` exactly as before.
  */
 export async function getBooks(): Promise<Book[]> {
   // no-store: always fetch fresh so the grid reflects DB changes immediately.
@@ -22,5 +27,8 @@ export async function getBooks(): Promise<Book[]> {
     throw new Error(`Failed to fetch books: ${res.status} ${res.statusText}`);
   }
 
-  return res.json();
+  // The API response is the Book shape minus the (derived) bookNumber.
+  const apiBooks: Omit<Book, "bookNumber">[] = await res.json();
+
+  return apiBooks.map((book, index) => ({ ...book, bookNumber: index + 1 }));
 }

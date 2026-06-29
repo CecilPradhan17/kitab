@@ -53,6 +53,15 @@ on mock data; it will be wired to the API once read endpoints exist.
   migrations) is the accepted cost.
 - **Local Postgres via Docker** (docker-compose), so dev mirrors prod and
   nothing is installed system-wide.
+- **Book number is derived, not stored.** There is no `book_number` column.
+  `GET /api/books` returns books ordered by `date_finished` (tiebreak
+  `created_at`, then `id`), and the frontend assigns the number by position in
+  `getBooks` (#1 = earliest finished). Reason: a stored sequence forces resequencing
+  on every insert/delete (and `MAX+1` bookkeeping on insert); deriving it makes
+  delete a single-row delete and insert a plain insert, with numbering always
+  consistent. `created_at TIMESTAMPTZ DEFAULT now()` exists only as the tiebreaker.
+  Trade-off: inserting a back-dated book shifts the displayed numbers of books
+  after it — acceptable, since the number is positional by definition.
 - **TypeScript config:** CommonJS module output (avoids the `.js`-extension-in-
   imports gotcha while learning); `strict` on. Dev runs via `tsx watch`;
   production path is `tsc` build → `node dist`.
@@ -101,7 +110,7 @@ type Book = {
   coverUrl: string;
   dateStarted: string;
   dateFinished: string;
-  bookNumber: number;
+  bookNumber: number; // derived in getBooks (by date_finished order), not stored/returned by the API
   quote: string;
 };
 ```

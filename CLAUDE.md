@@ -27,10 +27,10 @@ gold accents, metadata, and a quote — downloadable as a PNG for sharing.
 
 ## Current phase
 
-**Backend started.** The frontend prototype is considered visually validated
-("look and feel locked"), so backend work has begun. The Express API lives in
-`server/` (same repo as the Next.js app — see below). The frontend still runs
-on mock data; it will be wired to the API once read endpoints exist.
+**V1 feature-complete, not yet deployed.** The full stack is connected:
+Express API running in `server/`, Postgres via Docker, Next.js frontend wired
+to the real API. All core CRUD flows are built and working locally. Next
+milestone is deployment (Vercel + Railway/Render), followed by auth/profiles.
 
 ## Backend decisions (locked in, with reasoning)
 
@@ -66,6 +66,52 @@ on mock data; it will be wired to the API once read endpoints exist.
   imports gotcha while learning); `strict` on. Dev runs via `tsx watch`;
   production path is `tsc` build → `node dist`.
 
+## Image storage & CDN (locked in, with reasoning)
+
+- **Object storage: AWS S3.** Chosen over Cloudflare R2/Supabase Storage
+  deliberately for the AWS learning/resume signal — this project's stated
+  future milestone is AWS migration, so S3 now is consistent with that
+  direction rather than adding a second migration later.
+- **CDN: CloudFront in front of S3, from day one — not a later optimization.**
+  The bucket is NOT publicly readable directly; access is restricted to
+  CloudFront via Origin Access Control (OAC). Reasoning: same-region
+  S3-to-CloudFront transfer is free, CloudFront's own egress is cheaper than
+  direct S3-to-internet egress, and caching absorbs repeat requests (a
+  popular shared profile or book cover) instead of re-billing S3 egress on
+  every view. A public bucket with no CDN is also the main cost-abuse vector
+  (hotlinking, traffic spikes) — CloudFront closes that, it does not add to
+  the bill.
+- **Two asset types, same pattern (presigned upload, never proxy through Express):**
+  - **Profile photos**: client requests a presigned PUT URL from Express
+    (auth-gated — only a logged-in user can request one for their own
+    user id), uploads directly to S3, then tells the API the resulting
+    object key to store on the `users` row. Resized server-side via `sharp`
+    to a single small thumbnail variant.
+  - **Book covers**: fetched server-side from Open Library by ISBN at
+    insert/ingest time (not client-uploaded), deduplicated by ISBN so a
+    book owned by multiple users is stored once, resized via `sharp` into
+    two variants (grid thumbnail, 3D texture res), uploaded to S3, and the
+    resulting URLs stored on the book row instead of linking Open Library
+    directly. Supersedes the old "link Open Library directly" approach —
+    see updated `coverUrl` note below.
+- **IAM scoping:** Express's S3 credentials are scoped to
+  `PutObject`/`GetObject` on this bucket only — never root/account-wide
+  credentials.
+- **Cost controls (set up before any upload endpoint goes live):**
+  - AWS Budget + alert configured at account creation (low threshold, e.g. $5/$20).
+  - File-size and content-type validated server-side before issuing a
+    presigned URL (client-side validation alone is not a control).
+  - Rate limiting on the upload-URL-issuing endpoint.
+  - Presigned URLs are short-lived and only ever issued to an authenticated
+    user for their own resource.
+- **Cost shape at current scale (≤500 users):** storage and request costs
+  are negligible (~$0.05–0.20/month combined). Egress is the only line that
+  scales, and at this user count realistically stays inside AWS's always-on
+  100GB/month free internet egress tier even without CloudFront's caching
+  helping further — so expect close to $0/month, not a line to optimize
+  prematurely. Revisit storage class (e.g. Intelligent-Tiering) only if
+  usage patterns change at meaningfully larger scale.
+
 ## Tech stack (decided, do not change without discussion)
 
 - **Frontend:** Next.js (App Router), React, **TypeScript**, Tailwind CSS.
@@ -79,28 +125,23 @@ on mock data; it will be wired to the API once read endpoints exist.
   captures the full div (book render + styled metadata/quote overlay) as the
   final PNG. Client-side only, no server rendering. `preserveDrawingBuffer: true`
   is required on the export renderer or `toDataURL()` returns blank.
-- **Backend (future, not yet built):** Express + Node + TypeScript + PostgreSQL
-- **Hosting (future):** Railway or Render for the backend; Vercel for the
-  Next.js frontend. AWS migration is a deliberate later milestone, not a V1 goal.
+- **Backend:** Express + Node + TypeScript + PostgreSQL (built, running in `server/`)
+  **Hosting (not yet deployed):** Railway or Render for the backend; Vercel for the
+  Next.js frontend. **Image storage is on AWS now** (S3 + CloudFront — see
+  "Image storage & CDN" section), decided ahead of the broader AWS migration
+  because it's needed for profiles/auth. Full backend AWS migration remains a
+  deliberate later milestone, not a V1 goal.
 - **Package manager:** npm
 - **Fonts:** Playfair Display (or DM Serif Display) for titles/serif moments,
   Inter for UI/labels (small-caps style, wide letter-spacing for metadata labels)
 - **Color accent:** warm gold (~#C9973A) as the brand accent, dark/near-black
   backgrounds throughout
 
-## Data approach for V1 (current phase)
+## Data layer
 
-- Use **mock data only** — no live API calls, no backend.
-- `mockBooks.ts` lives in `src/features/library` and should contain 5-10 entries
-  using **real cover image URLs** (sourced from Open Library by ISBN —
-  `https://covers.openlibrary.org/b/isbn/{ISBN}-L.jpg` — preferred over Google
-  Books cover links, which require exact volume IDs and are easy to get wrong/
-  broken; Open Library by ISBN is more reliable for this design phase), not
-  placeholder gray boxes — this gives realistic image dimensions/quality to
-  design against. Include at least 1-2 books with non-standard cover aspect
-  ratios to stress-test layout, not just uniform hardcover dimensions.
-- Mock data shape must match the eventual real data shape exactly, defined as
-  a `Book` type/interface, e.g.:
+**The `Book` type** is defined in `src/features/library/mockBooks.ts` (file kept
+for the type export; the mock array itself is no longer used for rendering).
+Shape:
 
 ```ts
 type Book = {
@@ -115,9 +156,28 @@ type Book = {
 };
 ```
 
-- Components must be **presentational only** — they take data via props and
-  have zero knowledge of where the data came from. This ensures swapping mock
-  data for a real fetch later requires no component rewrites.
+**Cover URLs** are Open Library by ISBN —
+`https://covers.openlibrary.org/b/isbn/{ISBN}-L.jpg` — derived by the server
+at insert time from the ISBN the client sends. Never stored as a user-supplied
+URL.
+
+**API surface (Express, `server/src/routes/`):**
+
+- `GET /api/books` — full library, ordered by `date_finished, created_at, id`
+- `POST /api/books` — add a book; body: `{ title, author, isbn, dateStarted?, dateFinished?, quote? }`
+- `PATCH /api/books/:id` — update quote only; body: `{ quote }`
+- `DELETE /api/books/:id` — remove a book
+- `GET /api/book-search?q=` — proxies Open Library search, returns `{ title, author, isbn, coverUrl }[]`
+
+**Frontend data modules** (all presentational — components take props, never
+fetch directly):
+
+- `src/features/library/booksApi.ts` — `getBooks()`, runs server-side (RSC),
+  assigns `bookNumber` by position
+- `src/features/add-book/addBookApi.ts` — `searchBooks()` + `addBook()`,
+  client-side (CORS-enabled, uses `NEXT_PUBLIC_API_URL`)
+- `src/features/book-detail/bookDetailApi.ts` — `updateBookQuote()` +
+  `deleteBook()`, client-side
 
 ## Architecture decisions (locked in, with reasoning)
 
@@ -146,15 +206,14 @@ type Book = {
   cover's dominant hue (not a flat average, which comes out muddy gray), then
   re-lit to a fixed dark, rich value so they read as the book's edges rather
   than competing with the cover face. Grayscale covers fall back to a darkened
-  average; a failed read falls back to the dark default. In the current
-  frontend phase this is computed client-side from the loaded cover texture
-  (canvas downscale → dominant-hue vote → re-light). This is intended to move
-  to ingest-time once the backend exists — see image sourcing note below.
-- **Image sourcing (future, not yet built):** When backend work begins, cover
-  images will be fetched from Google Books API once per unique ISBN, cached in
-  our own storage, and never re-fetched from Google after that. Two stored
-  variants per cover: a small display version for the grid, a larger version
-  for the 3D texture. Future phase only — not for current frontend phase.
+  average; a failed read falls back to the dark default. Currently computed
+  client-side from the loaded cover texture (canvas downscale → dominant-hue
+  vote → re-light). Moving this to ingest-time is a future milestone — see
+  spine color note below.
+- **Image sourcing (future, not yet built):** Cover images currently come from
+  Open Library by ISBN, linked directly. Future plan: fetch once per unique
+  ISBN at ingest time, cache in our own storage, serve two variants (small for
+  grid, large for 3D texture). Not yet implemented.
 - **Spine color computed at ingest (future, not yet built):** When the backend
   ingests a book and fetches its cover, it will also compute the cover's dominant
   color and store it as a field on the book (e.g. `spineColor` on the `Book`
@@ -202,11 +261,9 @@ enormously — it is what people will see on Instagram Stories.
   skip the loading indicator or the experience feels broken
 - Preview modal opens showing the full export card
 - The export preview is **read-only** — it renders the book's current quote
-  (`book.quote`) and is NOT editable here. (Decision change from the original
-  spec: quote editing lives in the book detail modal, not the export preview,
-  so there's a single place to edit. The detail-modal editing feature is
-  deferred — not yet built. `StoryExportCard` keeps an optional `quote` prop
-  ready for it. There is no live-re-render-as-you-type requirement anymore.)
+  (`book.quote`) and is NOT editable here. Quote editing lives in the book
+  detail modal (single place to edit, already built). `StoryExportCard` keeps
+  an optional `quote` prop for future use. No live-re-render-as-you-type.
 - Two action buttons: "Copy image" / "Download PNG". "Share" is future.
 - "Share to Instagram" is a future feature — do not implement now, but leave
   a clearly commented placeholder so it's obvious where it goes
@@ -216,6 +273,20 @@ enormously — it is what people will see on Instagram Stories.
 haven't fully loaded at capture time. Must await `document.fonts.ready` (or
 explicitly load fonts via FontFace API) before triggering the capture. This is
 a known failure mode — do not skip it.
+
+## Public profile page (`/[username]`)
+
+The route exists at `src/app/[username]/page.tsx`. Current state:
+
+- Books are fetched from the real API (`getBooks()`), same as the home page
+- The profile header (name, bio, avatar) is still mock data from
+  `src/features/profile/mockProfile.ts` — the profile API and auth don't exist yet
+- The `[username]` route param is intentionally ignored for now; any path
+  renders the same mock profile
+- The library is read-only on the public page — no add/edit/delete affordances
+
+This page is shareable in its current form; it just always shows the same
+profile until auth is built.
 
 ## Folder structure
 
@@ -229,20 +300,52 @@ folders.
 
 ```
 src/
-  /app                      ← Next.js routes (App Router)
+  /app
+    page.tsx                ← home library (RSC, calls getBooks)
+    layout.tsx
+    /[username]
+      page.tsx              ← public profile page (RSC; mock profile, real books)
   /features
     /library
       BookCard.tsx
       LibraryGrid.tsx
-      mockBooks.ts
-    /book-detail             ← created when this feature is started, not before
-    /story-export            ← created when this feature is started, not before
-  /components/ui            ← truly shared, generic UI pieces (Button, Modal, etc.)
-  /lib                      ← shared utilities, API clients, etc.
+      LibraryView.tsx       ← client coordinator: owns selected-book state
+      mockBooks.ts          ← Book type + (unused) mock array
+      booksApi.ts           ← getBooks() — server-side RSC fetch
+    /add-book
+      AddBookButton.tsx
+      AddBookModal.tsx      ← search phase → details phase → POST /api/books
+      addBookApi.ts         ← searchBooks() + addBook() — client-side
+    /book-detail
+      BookDetailModal.tsx   ← quote editing + delete + "Share to story" trigger
+      Book3D.tsx
+      BookScene.tsx
+      bookDetailApi.ts      ← updateBookQuote() + deleteBook() — client-side
+    /story-export
+      ExportModal.tsx       ← offscreen render → preview → copy/download
+      StoryExportCard.tsx   ← the 1080×1920 card layout
+      renderBook.ts         ← offscreen WebGLRenderer pipeline
+    /profile
+      ProfileHeader.tsx
+      mockProfile.ts        ← placeholder until profile API exists
+      types.ts
+  /lib
+    coverColor.ts           ← dominant-hue extraction for 3D spine tint
+server/
+  /src
+    app.ts                  ← Express app factory
+    index.ts                ← server entrypoint
+    db.ts                   ← pg pool
+    /routes
+      books.ts              ← GET / POST / PATCH /:id / DELETE /:id
+      bookSearch.ts         ← GET ?q= (Open Library proxy)
+  /db
+    01_schema.sql
+    02_seed.sql
+  docker-compose.yml
 ```
 
-Do not pre-create empty folders for features that haven't been started yet —
-add a feature folder when work on that feature actually begins.
+Do not pre-create empty folders for features that haven't started yet.
 
 ## Conventions
 
@@ -280,6 +383,30 @@ add a feature folder when work on that feature actually begins.
   reviewed or reverted easily.
 - **Scope changes narrowly.** If asked to fix or build one thing, don't modify
   unrelated files or "improve" things that weren't asked for.
+
+## What's next (post-V1)
+
+These are planned but not started — in rough priority order:
+
+1. **Deployment** — Vercel (frontend) + Railway or Render (Express). Env vars
+   to wire: `API_URL` (server-side) and `NEXT_PUBLIC_API_URL` (client-side)
+   pointing at the deployed Express URL; `FRONTEND_ORIGIN` on Express pointing
+   at the Vercel URL.
+2. **Auth + profiles** — Users, login, and real `[username]` routing. The
+   profile page and mock data are intentionally placeholders for this.
+3. **Auth + profile photo upload** (in progress) — sessions/JWT built manually
+   (deliberate choice over Lucia/Auth.js, more learning). Profile photo
+   upload via S3 presigned URLs — see "Image storage & CDN" section for the
+   full design.
+4. **Image caching** (design locked, not yet implemented) — fetch and store
+   cover images at ingest time rather than linking Open Library directly, via
+   the S3 + CloudFront pipeline above. Two variants per ISBN (grid + 3D
+   texture).
+5. **Spine color at ingest** — Move dominant-hue extraction server-side (via
+   `sharp`) and store it as a `spineColor` field on the book, so the frontend
+   reads it from props instead of computing it client-side on every load.
+6. **"Share to Instagram"** — Web Share API on mobile. Placeholder comment
+   already in `ExportModal.tsx`.
 
 ## When to update this file
 

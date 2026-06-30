@@ -162,7 +162,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        className="relative flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80"
+        className="relative flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80"
       >
         {/* Close affordance */}
         <button
@@ -299,20 +299,20 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
                     <button
                       type="button"
                       onClick={() => setSelected(result)}
-                      className="flex w-full items-center gap-3 rounded-lg p-2 text-left outline-none transition-colors hover:bg-white/5 focus-visible:bg-white/5"
+                      className="flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left outline-none transition-colors hover:bg-white/5 focus-visible:bg-white/5"
                     >
                       <img
                         src={result.coverUrl}
                         alt=""
                         aria-hidden
                         loading="lazy"
-                        className="h-14 w-[2.35rem] shrink-0 rounded object-cover ring-1 ring-white/10"
+                        className="h-10 w-[1.67rem] shrink-0 rounded object-cover ring-1 ring-white/10"
                       />
                       <span className="flex min-w-0 flex-col">
-                        <span className="truncate font-serif text-base text-foreground">
+                        <span className="truncate font-serif text-sm text-foreground">
                           {result.title}
                         </span>
-                        <span className="truncate font-sans text-sm text-muted">
+                        <span className="truncate font-sans text-xs text-muted">
                           {result.author}
                         </span>
                       </span>

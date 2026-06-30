@@ -301,13 +301,15 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
                       onClick={() => setSelected(result)}
                       className="flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left outline-none transition-colors hover:bg-white/5 focus-visible:bg-white/5"
                     >
-                      <img
-                        src={result.coverUrl}
-                        alt=""
-                        aria-hidden
-                        loading="lazy"
-                        className="h-10 w-[1.67rem] shrink-0 rounded object-cover ring-1 ring-white/10"
-                      />
+                      <div className="h-10 w-[1.67rem] shrink-0 flex-none overflow-hidden rounded ring-1 ring-white/10">
+                        <img
+                          src={result.coverUrl}
+                          alt=""
+                          aria-hidden
+                          loading="lazy"
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
                       <span className="flex min-w-0 flex-col">
                         <span className="truncate font-serif text-sm text-foreground">
                           {result.title}

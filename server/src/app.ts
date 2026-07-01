@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import { authRouter } from "./routes/auth";
 import { booksRouter } from "./routes/books";
 import { bookSearchRouter } from "./routes/bookSearch";
 
@@ -32,6 +33,7 @@ export function createApp(): Express {
   });
 
   // Feature routers, mounted under /api.
+  app.use("/api/auth", authRouter);
   app.use("/api/books", booksRouter);
   app.use("/api/book-search", bookSearchRouter);
 

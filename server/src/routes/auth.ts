@@ -20,6 +20,12 @@ authRouter.post("/register", async (req, res) => {
     return;
   }
 
+  // "me" is reserved — it's a path segment used by PATCH /api/users/me.
+  if (username === "me") {
+    res.status(400).json({ error: "'me' is a reserved username" });
+    return;
+  }
+
   // Lowercase alphanumeric + underscores, 3-20 chars.
   if (!/^[a-z0-9_]{3,20}$/.test(username)) {
     res.status(400).json({

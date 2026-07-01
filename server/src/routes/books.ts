@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { pool } from "../db";
+import { requireAuth } from "../middleware/requireAuth";
 
 /**
  * The shape we return to clients. It mirrors the frontend `Book` type minus
@@ -20,8 +21,8 @@ export interface Book {
 
 export const booksRouter = Router();
 
-// GET /api/books — the whole library, in reading order (oldest finished first).
-booksRouter.get("/", async (_req, res) => {
+// GET /api/books — the authenticated user's library, in reading order.
+booksRouter.get("/", requireAuth, async (req, res) => {
   try {
     // Three deliberate things in this query:
     //  - Quoted aliases ("coverUrl"): Postgres lowercases unquoted identifiers,
@@ -40,7 +41,9 @@ booksRouter.get("/", async (_req, res) => {
               date_finished::text AS "dateFinished",
               quote
        FROM books
-       ORDER BY date_finished, created_at, id;`
+       WHERE user_id = $1
+       ORDER BY date_finished, created_at, id;`,
+      [req.user!.userId]
     );
 
     res.json(result.rows);
@@ -60,13 +63,13 @@ function isISODate(value: unknown): value is string {
   );
 }
 
-// POST /api/books — add a book to the library.
+// POST /api/books — add a book to the authenticated user's library.
 //
 // Body: { title, author, isbn, dateStarted?, dateFinished?, quote? }. The client
 // sends the ISBN it picked from search; the server derives the cover URL from it
 // (single home for the Open Library URL scheme). There's no book_number to set —
 // it's derived on read from ordering.
-booksRouter.post("/", async (req, res) => {
+booksRouter.post("/", requireAuth, async (req, res) => {
   const { title, author, isbn, dateStarted, dateFinished, quote } = req.body ?? {};
 
   // Validate up front and reject with 400 before touching the DB. req.body is
@@ -94,8 +97,8 @@ booksRouter.post("/", async (req, res) => {
 
   try {
     const result = await pool.query<Book>(
-      `INSERT INTO books (title, author, isbn, cover_url, date_started, date_finished, quote)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO books (title, author, isbn, cover_url, date_started, date_finished, quote, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id, title, author,
                  cover_url           AS "coverUrl",
                  date_started::text  AS "dateStarted",
@@ -109,6 +112,7 @@ booksRouter.post("/", async (req, res) => {
         dateStarted ?? null,
         dateFinished ?? null,
         quote ?? null,
+        req.user!.userId,
       ]
     );
 
@@ -123,7 +127,7 @@ booksRouter.post("/", async (req, res) => {
 //
 // Scoped to the quote alone: it's the only field the detail modal edits. A more
 // general partial-update endpoint can come later if other fields become editable.
-booksRouter.patch("/:id", async (req, res) => {
+booksRouter.patch("/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
   const { quote } = req.body ?? {};
 
@@ -136,16 +140,17 @@ booksRouter.patch("/:id", async (req, res) => {
     const result = await pool.query<Book>(
       `UPDATE books
        SET quote = $1
-       WHERE id = $2
+       WHERE id = $2 AND user_id = $3
        RETURNING id, title, author,
                  cover_url           AS "coverUrl",
                  date_started::text  AS "dateStarted",
                  date_finished::text AS "dateFinished",
                  quote;`,
-      [quote.trim(), id]
+      [quote.trim(), id, req.user!.userId]
     );
 
-    // No row matched — the id is well-formed but not in the table.
+    // rowCount 0 means either the id doesn't exist or it belongs to another user.
+    // 404 either way — don't reveal ownership by returning 403.
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "Book not found" });
     }
@@ -162,15 +167,18 @@ booksRouter.patch("/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/books/:id — remove a book.
+// DELETE /api/books/:id — remove a book from the authenticated user's library.
 //
 // Just one row delete: book_number isn't stored, so there's no sequence to
 // close up. The frontend re-derives numbers from order on its next fetch.
-booksRouter.delete("/:id", async (req, res) => {
+booksRouter.delete("/:id", requireAuth, async (req, res) => {
   const { id } = req.params;
 
   try {
-    const result = await pool.query("DELETE FROM books WHERE id = $1;", [id]);
+    const result = await pool.query(
+      "DELETE FROM books WHERE id = $1 AND user_id = $2;",
+      [id, req.user!.userId]
+    );
 
     if (result.rowCount === 0) {
       return res.status(404).json({ error: "Book not found" });

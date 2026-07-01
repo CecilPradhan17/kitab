@@ -3,6 +3,7 @@ import cors from "cors";
 import { authRouter } from "./routes/auth";
 import { booksRouter } from "./routes/books";
 import { bookSearchRouter } from "./routes/bookSearch";
+import { usersRouter } from "./routes/users";
 
 // Where browser requests are allowed to originate. Reads run server-to-server
 // (Next RSC -> Express) and need no CORS, but the add-book modal calls Express
@@ -36,6 +37,7 @@ export function createApp(): Express {
   app.use("/api/auth", authRouter);
   app.use("/api/books", booksRouter);
   app.use("/api/book-search", bookSearchRouter);
+  app.use("/api/users", usersRouter);
 
   return app;
 }

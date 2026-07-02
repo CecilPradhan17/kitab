@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { setStoredToken } from "@/lib/auth";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 export default function RegisterPage() {
   const [username, setUsername] = useState("");
@@ -13,13 +16,13 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/register", {
+      const res = await fetch(`${API_URL}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -37,8 +40,8 @@ export default function RegisterPage() {
         return;
       }
 
-      router.push("/");
-      router.refresh();
+      setStoredToken(data.token);
+      router.replace("/");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -59,10 +62,7 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
-            <label
-              htmlFor="username"
-              className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted"
-            >
+            <label htmlFor="username" className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
               Username
             </label>
             <input
@@ -75,16 +75,12 @@ export default function RegisterPage() {
               className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-sm text-foreground placeholder:text-muted/50 focus:outline-none focus:border-accent transition-colors"
             />
             <p className="text-[0.6rem] text-muted/70">
-              3–20 characters. Lowercase letters, numbers, underscores only.
-              Your public profile will be at /username.
+              3–20 chars. Lowercase letters, numbers, underscores. Your profile will be at /username.
             </p>
           </div>
 
           <div className="flex flex-col gap-2">
-            <label
-              htmlFor="displayName"
-              className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted"
-            >
+            <label htmlFor="displayName" className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
               Display name <span className="normal-case tracking-normal">(optional)</span>
             </label>
             <input
@@ -98,10 +94,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label
-              htmlFor="email"
-              className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted"
-            >
+            <label htmlFor="email" className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
               Email
             </label>
             <input
@@ -116,10 +109,7 @@ export default function RegisterPage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <label
-              htmlFor="password"
-              className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted"
-            >
+            <label htmlFor="password" className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
               Password
             </label>
             <input
@@ -133,9 +123,7 @@ export default function RegisterPage() {
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-red-400/90">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-400/90">{error}</p>}
 
           <button
             type="submit"

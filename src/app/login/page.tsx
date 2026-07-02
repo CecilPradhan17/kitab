@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { setStoredToken } from "@/lib/auth";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -11,13 +14,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -30,10 +33,8 @@ export default function LoginPage() {
         return;
       }
 
-      // refresh() re-runs the middleware so the home page RSC picks up the
-      // new cookie immediately instead of serving a cached unauthenticated render.
-      router.push("/");
-      router.refresh();
+      setStoredToken(data.token);
+      router.replace("/");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -89,9 +90,7 @@ export default function LoginPage() {
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-red-400/90">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-400/90">{error}</p>}
 
           <button
             type="submit"

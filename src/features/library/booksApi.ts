@@ -1,20 +1,16 @@
 import type { Book } from "./mockBooks";
-import { getToken } from "@/lib/session";
 
-const API_URL = process.env.API_URL ?? "http://localhost:4000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 /**
- * Fetch the authenticated user's library from the API.
- *
- * Runs server-side in an RSC. Reads the auth token from the httpOnly cookie
- * and forwards it to Express as a Bearer header so requireAuth passes.
+ * Fetch the authenticated user's library. Runs client-side — the home page is
+ * a client component since it's always auth-gated and user-specific (no SSR value).
+ * The caller is responsible for reading the token from localStorage and redirecting
+ * if it's missing; this function just makes the request.
  */
-export async function getBooks(): Promise<Book[]> {
-  const token = await getToken();
-
+export async function getBooks(token: string): Promise<Book[]> {
   const res = await fetch(`${API_URL}/api/books`, {
-    cache: "no-store",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: { Authorization: `Bearer ${token}` },
   });
 
   if (!res.ok) {
@@ -27,10 +23,12 @@ export async function getBooks(): Promise<Book[]> {
 
 /**
  * Fetch a public user's library by username — no auth required.
- * Used by the /[username] profile page for any visitor.
+ * Used by the /[username] profile page (RSC, no token needed).
  */
 export async function getPublicBooks(username: string): Promise<Book[]> {
-  const res = await fetch(`${API_URL}/api/users/${username}/books`, {
+  const API_SERVER = process.env.API_URL ?? "http://localhost:4000";
+
+  const res = await fetch(`${API_SERVER}/api/users/${username}/books`, {
     cache: "no-store",
   });
 

@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import AddBookModal from "./AddBookModal";
 
+interface AddBookButtonProps {
+  onBookAdded: () => void;
+}
+
 /** Self-contained add-book entry point: the trigger button plus the modal it
-    opens. Kept separate from LibraryView so the add flow doesn't entangle with
-    the "which book is selected" state — it just opens, adds, and (in 3b) tells
-    the page to refresh. */
-export default function AddBookButton() {
+    opens. Calls onBookAdded (from the home page) after a successful add so the
+    page re-fetches the library without needing router.refresh(). */
+export default function AddBookButton({ onBookAdded }: AddBookButtonProps) {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
 
   return (
     <>
@@ -28,7 +29,10 @@ export default function AddBookButton() {
       <AddBookModal
         open={open}
         onClose={() => setOpen(false)}
-        onAdded={() => router.refresh()}
+        onAdded={() => {
+          onBookAdded();
+          setOpen(false);
+        }}
       />
     </>
   );

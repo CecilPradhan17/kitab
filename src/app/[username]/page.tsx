@@ -1,14 +1,18 @@
 import ProfileHeader from "@/features/profile/ProfileHeader";
 import { mockProfile } from "@/features/profile/mockProfile";
 import LibraryView from "@/features/library/LibraryView";
-import { getBooks } from "@/features/library/booksApi";
+import { getPublicBooks } from "@/features/library/booksApi";
 
-/** Public profile page — the shareable front door of a user's library.
-    Mock-data phase: the [username] route param is intentionally ignored and the
-    same mock profile renders regardless of the URL. The books now come from the
-    API; the profile is still mock until the profiles endpoint exists. */
-export default async function ProfilePage() {
-  const books = await getBooks();
+// Public profile page — accessible to all visitors, no auth required.
+// Books come from the public API endpoint (no token needed).
+// Profile header is still mock data until Chunk 6 wires up the profile API.
+export default async function ProfilePage({
+  params,
+}: {
+  params: Promise<{ username: string }>;
+}) {
+  const { username } = await params;
+  const books = await getPublicBooks(username);
 
   return (
     <main className="flex-1">

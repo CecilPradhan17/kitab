@@ -2,6 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcrypt";
 import { pool } from "../db";
 import { signToken } from "../lib/jwt";
+import { requireAuth } from "../middleware/requireAuth";
 
 export const authRouter = Router();
 

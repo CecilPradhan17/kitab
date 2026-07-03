@@ -1,13 +1,24 @@
 import type { Book } from "./mockBooks";
 import BookCard from "./BookCard";
+import AddBookButton from "@/features/add-book/AddBookButton";
 
 interface LibraryGridProps {
   books: Book[];
   onSelectBook: (book: Book) => void;
+  /** Owner-only: renders the add-book tile as the first grid item. */
+  isOwner: boolean;
+  onBookAdded: () => void;
 }
 
-export default function LibraryGrid({ books, onSelectBook }: LibraryGridProps) {
-  if (books.length === 0) {
+export default function LibraryGrid({
+  books,
+  onSelectBook,
+  isOwner,
+  onBookAdded,
+}: LibraryGridProps) {
+  // A visitor looking at an empty library sees a message; an owner sees the
+  // add-book tile instead (below), so there's always a way to get started.
+  if (books.length === 0 && !isOwner) {
     return (
       <p className="font-sans text-sm text-muted">
         No books yet — the shelves are waiting.
@@ -17,6 +28,7 @@ export default function LibraryGrid({ books, onSelectBook }: LibraryGridProps) {
 
   return (
     <div className="grid grid-cols-2 justify-items-center gap-x-8 gap-y-12 sm:mx-[10vw] sm:grid-cols-4 [&>*]:w-full [&>*]:max-w-40">
+      {isOwner && <AddBookButton onBookAdded={onBookAdded} />}
       {books.map((book) => (
         <BookCard key={book.id} book={book} onSelect={onSelectBook} />
       ))}

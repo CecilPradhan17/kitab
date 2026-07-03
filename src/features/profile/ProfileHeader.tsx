@@ -2,29 +2,34 @@
 
 import { useState } from "react";
 import type { Profile } from "./types";
+import EditProfileModal from "./EditProfileModal";
 
 interface ProfileHeaderProps {
   profile: Profile;
+  /** Derived from the fetched books array on the page — not stored on Profile. */
+  booksReadCount: number;
+  /** Whether the current viewer owns this profile — gates the edit trigger.
+      Computed by the page (from localStorage) and passed down, not derived here. */
+  isOwner: boolean;
 }
 
-/** The shareable "front door" of a Kitab library. Presentational only — it
-    takes a Profile and renders it; it owns one scrap of local UI state (whether
-    the avatar image failed to load) purely to drive the initial-letter fallback,
-    not to fetch or derive any data. */
-export default function ProfileHeader({ profile }: ProfileHeaderProps) {
-  const {
-    username,
-    displayName,
-    bio,
-    avatarUrl,
-    booksReadCount,
-    favoriteGenre,
-  } = profile;
+/** The shareable "front door" of a Kitab library. Takes a Profile and renders
+    it; owns a local copy of it so an edit can update the view in place. */
+export default function ProfileHeader({
+  profile: initialProfile,
+  booksReadCount,
+  isOwner,
+}: ProfileHeaderProps) {
+  const [profile, setProfile] = useState(initialProfile);
+  const [isEditing, setIsEditing] = useState(false);
+
+  const { username, displayName, bio, avatarUrl } = profile;
+  const shownName = displayName?.trim() || username;
 
   // Show the initial-letter fallback if there's no URL, or if the image 404s.
   const [imgFailed, setImgFailed] = useState(false);
-  const showFallback = avatarUrl.trim() === "" || imgFailed;
-  const initial = displayName.trim().charAt(0).toUpperCase() || "·";
+  const showFallback = !avatarUrl || imgFailed;
+  const initial = shownName.charAt(0).toUpperCase() || "·";
 
   const profileUrl = `kitab.com/u/${username}`;
 
@@ -52,7 +57,7 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
       <div className="flex items-start justify-between gap-6">
         <div className="min-w-0">
           <h1 className="font-serif text-2xl font-medium text-foreground sm:text-3xl">
-            {displayName}
+            {shownName}
           </h1>
           <p
             className="mt-1 font-sans text-[0.8rem] tracking-wide"
@@ -60,19 +65,21 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
           >
             @{username}
           </p>
-          <p
-            className="mt-3 max-w-prose font-sans text-sm leading-relaxed"
-            style={{ color: "#a89880" }}
-          >
-            {bio}
-          </p>
+          {bio && (
+            <p
+              className="mt-3 max-w-prose font-sans text-sm leading-relaxed"
+              style={{ color: "#a89880" }}
+            >
+              {bio}
+            </p>
+          )}
         </div>
 
         {/* Avatar: circular image, or a dark circle with the user's initial. */}
         <div className="shrink-0">
           {showFallback ? (
             <div
-              aria-label={`${displayName} avatar`}
+              aria-label={`${shownName} avatar`}
               className="flex h-28 w-28 items-center justify-center rounded-2xl font-serif text-4xl sm:h-32 sm:w-32 sm:text-5xl"
               style={{
                 background: "#15110d",
@@ -84,8 +91,8 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
             </div>
           ) : (
             <img
-              src={avatarUrl}
-              alt={`${displayName} avatar`}
+              src={avatarUrl ?? undefined}
+              alt={`${shownName} avatar`}
               onError={() => setImgFailed(true)}
               className="h-28 w-28 rounded-2xl object-cover sm:h-32 sm:w-32"
               style={{ boxShadow: "0 8px 24px rgba(0, 0, 0, 0.5)" }}
@@ -94,18 +101,12 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
         </div>
       </div>
 
-      {/* Stats: two minimal blocks, divided by a thin gold rule. */}
+      {/* Stats: single stat, no divider needed with favoriteGenre gone. */}
       <div className="mt-8 flex items-stretch gap-6">
         <Stat label="Books Read" value={String(booksReadCount)} />
-        <div
-          aria-hidden
-          className="self-stretch"
-          style={{ width: "1px", background: "rgba(201, 151, 58, 0.25)" }}
-        />
-        <Stat label="Favorite Genre" value={favoriteGenre} />
       </div>
 
-      {/* Profile link: selectable plain text, with a copy button beside it. */}
+      {/* Profile link + copy, and (owner-only) the edit trigger. */}
       <div className="mt-6 flex items-center gap-3">
         <span
           className="select-text font-sans text-xs"
@@ -122,7 +123,26 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
         >
           Copy
         </button>
+
+        {isOwner && (
+          <button
+            type="button"
+            onClick={() => setIsEditing(true)}
+            className="ml-auto rounded-full border border-accent/50 px-4 py-1.5 font-sans text-[0.6rem] uppercase tracking-[0.15em] text-accent outline-none transition-colors hover:bg-accent hover:text-background focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Edit profile
+          </button>
+        )}
       </div>
+
+      <EditProfileModal
+        profile={isEditing ? profile : null}
+        onClose={() => setIsEditing(false)}
+        onSaved={(updated) => {
+          setProfile(updated);
+          setIsEditing(false);
+        }}
+      />
     </header>
   );
 }

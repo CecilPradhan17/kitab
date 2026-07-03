@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { setStoredToken } from "@/lib/auth";
+import { setStoredToken, setStoredUser } from "@/lib/auth";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -41,7 +41,8 @@ export default function RegisterPage() {
       }
 
       setStoredToken(data.token);
-      router.replace("/");
+      setStoredUser(data.user);
+      router.replace(`/${data.user.username}`);
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

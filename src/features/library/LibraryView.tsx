@@ -7,32 +7,40 @@ import BookDetailModal from "@/features/book-detail/BookDetailModal";
 
 interface LibraryViewProps {
   books: Book[];
-  // Optional: called after a book is edited or deleted so the parent can
-  // re-fetch. Not provided on the read-only public profile page.
-  onBooksChanged?: () => void;
+  /** Whether the current viewer owns this library — gates add/edit/delete
+      affordances throughout the grid and detail modal. */
+  isOwner: boolean;
+  // Called after a book is added, edited, or deleted so the parent can re-fetch.
+  onBooksChanged: () => void;
 }
 
 /** Client coordinator for the library. Owns the "which book is open" state and
     bridges the (presentational) grid to the (presentational) detail modal, so
     neither of those needs to know about state or each other. */
-export default function LibraryView({ books, onBooksChanged }: LibraryViewProps) {
+export default function LibraryView({ books, isOwner, onBooksChanged }: LibraryViewProps) {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
   function handleBookUpdated(updated: Book) {
     setSelectedBook(updated);
-    onBooksChanged?.();
+    onBooksChanged();
   }
 
   function handleBookDeleted() {
     setSelectedBook(null);
-    onBooksChanged?.();
+    onBooksChanged();
   }
 
   return (
     <>
-      <LibraryGrid books={books} onSelectBook={setSelectedBook} />
+      <LibraryGrid
+        books={books}
+        onSelectBook={setSelectedBook}
+        isOwner={isOwner}
+        onBookAdded={onBooksChanged}
+      />
       <BookDetailModal
         book={selectedBook}
+        isOwner={isOwner}
         onClose={() => setSelectedBook(null)}
         onBookUpdated={handleBookUpdated}
         onBookDeleted={handleBookDeleted}

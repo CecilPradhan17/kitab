@@ -11,6 +11,10 @@ interface BookDetailModalProps {
       the selected book itself (rather than a separate boolean) keeps a single
       source of truth — there's no way to be "open" with no book. */
   book: Book | null;
+  /** Whether the current viewer owns this library. Gates quote editing and
+      delete — presentational only, the real check happens on the server when
+      these actions hit Express. */
+  isOwner: boolean;
   onClose: () => void;
   /** Called with the updated book after an edit (e.g. the quote), so the parent
       can sync its copy and refresh. Keeps this modal from owning library state. */
@@ -29,6 +33,7 @@ function formatMonthYear(iso: string): string {
 
 export default function BookDetailModal({
   book,
+  isOwner,
   onClose,
   onBookUpdated,
   onBookDeleted,
@@ -183,7 +188,7 @@ export default function BookDetailModal({
             {formatMonthYear(book.dateFinished)}
           </p>
 
-          {editingQuote ? (
+          {editingQuote && isOwner ? (
             <div className="mt-8 flex flex-col gap-3">
               <textarea
                 value={draft}
@@ -220,13 +225,15 @@ export default function BookDetailModal({
               <blockquote className="border-l-2 border-accent/60 pl-5 font-serif text-lg italic leading-relaxed text-foreground/90">
                 &ldquo;{book.quote}&rdquo;
               </blockquote>
-              <button
-                type="button"
-                onClick={startEditingQuote}
-                className="mt-3 font-sans text-xs uppercase tracking-[0.2em] text-accent outline-none transition-colors hover:text-foreground focus-visible:underline"
-              >
-                Edit quote
-              </button>
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={startEditingQuote}
+                  className="mt-3 font-sans text-xs uppercase tracking-[0.2em] text-accent outline-none transition-colors hover:text-foreground focus-visible:underline"
+                >
+                  Edit quote
+                </button>
+              )}
             </div>
           )}
 
@@ -241,6 +248,7 @@ export default function BookDetailModal({
 
           {/* Delete affordance — de-emphasised, with an inline two-step confirm
               since the action is destructive and can't be undone. */}
+          {isOwner && (
           <div className="mt-auto pt-8">
             {confirmingDelete ? (
               <div className="flex flex-col gap-3">
@@ -279,6 +287,7 @@ export default function BookDetailModal({
               </button>
             )}
           </div>
+          )}
         </div>
       </div>
     </div>

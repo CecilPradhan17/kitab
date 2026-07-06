@@ -168,7 +168,7 @@ export default function BookDetailModal({
 
         {/* The live 3D book. Keyed on book.id so switching books remounts the
             scene with a fresh texture instead of mutating the existing one. */}
-        <div className="relative mx-auto aspect-[2/3] w-48 shrink-0 sm:mx-0">
+        <div className="relative mx-auto aspect-[2/3] w-64 shrink-0 sm:mx-0 sm:w-72">
           <BookScene key={book.id} book={book} />
         </div>
 

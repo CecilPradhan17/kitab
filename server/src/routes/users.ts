@@ -1,17 +1,19 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { randomUUID } from "crypto";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import sharp from "sharp";
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { pool } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
-import { s3, S3_BUCKET_NAME } from "../lib/s3";
+import { s3, S3_BUCKET_NAME, CLOUDFRONT_DOMAIN } from "../lib/s3";
 import { Book } from "./books";
 
 export const usersRouter = Router();
 
 const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
+const AVATAR_SIZE = 256; // px, square thumbnail actually served to clients
 
 // Keyed by user id, not IP — this route is already auth-gated, so the
 // authenticated identity is a more meaningful limit than an IP address
@@ -85,6 +87,99 @@ usersRouter.get("/:username/books", async (req, res) => {
   }
 });
 
+// PATCH /api/users/me/avatar — confirms a direct-to-S3 upload from
+// POST .../avatar. Body: { key } — the raw key returned by that step.
+//
+// Fetches the raw upload back from S3, resizes it to a single square
+// thumbnail via sharp, publishes it under a new serving key, updates
+// avatar_url, and cleans up both the raw object and any previous avatar.
+usersRouter.patch("/me/avatar", requireAuth, async (req, res) => {
+  const { key } = req.body as { key?: string };
+
+  // The key must belong to this user's own raw-upload namespace — otherwise a
+  // client could hand us any S3 key (someone else's upload, or an arbitrary
+  // string) and have us fetch/process/publish it as their avatar.
+  const expectedPrefix = `avatars/raw/${req.user!.userId}/`;
+  if (!key || !key.startsWith(expectedPrefix)) {
+    res.status(400).json({ error: "Invalid or missing upload key" });
+    return;
+  }
+
+  let resized: Buffer;
+  try {
+    const raw = await s3.send(new GetObjectCommand({ Bucket: S3_BUCKET_NAME, Key: key }));
+    const rawBytes = await raw.Body!.transformToByteArray();
+    resized = await sharp(Buffer.from(rawBytes))
+      .resize(AVATAR_SIZE, AVATAR_SIZE, { fit: "cover" })
+      .webp({ quality: 82 })
+      .toBuffer();
+  } catch (err) {
+    console.error("PATCH /api/users/me/avatar: failed to fetch/resize upload:", err);
+    res.status(400).json({ error: "Could not find or process the uploaded file" });
+    return;
+  }
+
+  const uploadId = key.slice(expectedPrefix.length);
+  const servingKey = `avatars/${req.user!.userId}/${uploadId}.webp`;
+  const avatarUrl = `https://${CLOUDFRONT_DOMAIN}/${servingKey}`;
+
+  try {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: S3_BUCKET_NAME,
+        Key: servingKey,
+        Body: resized,
+        ContentType: "image/webp",
+      })
+    );
+  } catch (err) {
+    console.error("PATCH /api/users/me/avatar: failed to publish thumbnail:", err);
+    res.status(500).json({ error: "Failed to save avatar" });
+    return;
+  }
+
+  // Best-effort cleanup — the new avatar is already live at this point, so a
+  // failure here shouldn't fail the request, just leave an orphan to clean up later.
+  s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET_NAME, Key: key })).catch((err) => {
+    console.error("Failed to clean up raw avatar upload:", err);
+  });
+
+  try {
+    const current = await pool.query<{ avatarUrl: string | null }>(
+      `SELECT avatar_url AS "avatarUrl" FROM users WHERE id = $1;`,
+      [req.user!.userId]
+    );
+    const previousAvatarUrl = current.rows[0]?.avatarUrl;
+
+    const result = await pool.query<PublicProfile>(
+      `UPDATE users
+       SET avatar_url = $1
+       WHERE id = $2
+       RETURNING username,
+                 display_name AS "displayName",
+                 bio,
+                 avatar_url   AS "avatarUrl";`,
+      [avatarUrl, req.user!.userId]
+    );
+
+    // Clean up the previous avatar now that the new one is live and saved —
+    // only if it's actually one of ours (defends against ever deleting
+    // something that isn't a CloudFront-served object we generated).
+    const cdnPrefix = `https://${CLOUDFRONT_DOMAIN}/`;
+    if (previousAvatarUrl?.startsWith(cdnPrefix)) {
+      const previousKey = previousAvatarUrl.slice(cdnPrefix.length);
+      s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET_NAME, Key: previousKey })).catch((err) => {
+        console.error("Failed to clean up previous avatar:", err);
+      });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("PATCH /api/users/me/avatar: failed to update profile:", err);
+    res.status(500).json({ error: "Failed to update profile" });
+  }
+});
+
 // PATCH /api/users/me — update the authenticated user's displayName and/or bio.
 // Body: { displayName?, bio? } — at least one field required.
 usersRouter.patch("/me", requireAuth, async (req, res) => {
@@ -144,7 +239,7 @@ usersRouter.patch("/me", requireAuth, async (req, res) => {
 // user's narrow scope (this bucket only), the URL's short expiry, and this
 // route's rate limit, not this check alone.
 //
-// PATCH /api/users/me/avatar (Chunk 7c) confirms the upload, resizes it via
+// PATCH /api/users/me/avatar (below) confirms the upload, resizes it via
 // sharp, and finalizes avatar_url.
 usersRouter.post("/me/avatar", requireAuth, avatarUploadLimiter, async (req, res) => {
   const { contentType, fileSize } = req.body as {

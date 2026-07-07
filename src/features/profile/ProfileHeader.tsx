@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Profile } from "./types";
 import EditProfileModal from "./EditProfileModal";
+import AvatarUploadModal from "./AvatarUploadModal";
 
 interface ProfileHeaderProps {
   profile: Profile;
@@ -22,6 +23,7 @@ export default function ProfileHeader({
 }: ProfileHeaderProps) {
   const [profile, setProfile] = useState(initialProfile);
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const { username, displayName, bio, avatarUrl } = profile;
   const shownName = displayName?.trim() || username;
@@ -75,8 +77,9 @@ export default function ProfileHeader({
           )}
         </div>
 
-        {/* Avatar: circular image, or a dark circle with the user's initial. */}
-        <div className="shrink-0">
+        {/* Avatar: circular image, or a dark circle with the user's initial.
+            Owner-only change trigger overlays the whole thing on hover/focus. */}
+        <div className="relative shrink-0">
           {showFallback ? (
             <div
               aria-label={`${shownName} avatar`}
@@ -97,6 +100,19 @@ export default function ProfileHeader({
               className="h-28 w-28 rounded-2xl object-cover sm:h-32 sm:w-32"
               style={{ boxShadow: "0 8px 24px rgba(0, 0, 0, 0.5)" }}
             />
+          )}
+
+          {isOwner && (
+            <button
+              type="button"
+              onClick={() => setIsUploadingAvatar(true)}
+              aria-label="Change photo"
+              className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/0 opacity-0 outline-none transition-all hover:bg-black/50 hover:opacity-100 focus-visible:bg-black/50 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <span className="font-sans text-[0.6rem] uppercase tracking-[0.15em] text-white">
+                Change
+              </span>
+            </button>
           )}
         </div>
       </div>
@@ -142,6 +158,12 @@ export default function ProfileHeader({
           setProfile(updated);
           setIsEditing(false);
         }}
+      />
+
+      <AvatarUploadModal
+        profile={isUploadingAvatar ? profile : null}
+        onClose={() => setIsUploadingAvatar(false)}
+        onUploaded={(updated) => setProfile(updated)}
       />
     </header>
   );

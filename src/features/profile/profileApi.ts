@@ -45,3 +45,67 @@ export async function updateProfile(
 
   return res.json();
 }
+
+interface AvatarUploadTarget {
+  uploadUrl: string;
+  key: string;
+}
+
+/**
+ * Ask Express for a presigned S3 URL to upload a new avatar. Client-side —
+ * called from the avatar upload modal. Doesn't touch avatar_url yet; that
+ * only happens once confirmAvatarUpload() runs after the direct S3 upload.
+ */
+export async function requestAvatarUpload(
+  token: string,
+  file: File
+): Promise<AvatarUploadTarget> {
+  const res = await fetch(`${API_URL}/api/users/me/avatar`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ contentType: file.type, fileSize: file.size }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to request avatar upload: ${res.status} ${res.statusText}`);
+  }
+
+  return res.json();
+}
+
+/** Uploads the file directly to S3 via the presigned URL — never touches Express. */
+export async function uploadAvatarFile(uploadUrl: string, file: File): Promise<void> {
+  const res = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: { "Content-Type": file.type },
+    body: file,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to upload file to S3: ${res.status} ${res.statusText}`);
+  }
+}
+
+/**
+ * Confirms a completed S3 upload — Express fetches it back, resizes it, and
+ * finalizes avatar_url. Call this only after uploadAvatarFile() succeeds.
+ */
+export async function confirmAvatarUpload(token: string, key: string): Promise<Profile> {
+  const res = await fetch(`${API_URL}/api/users/me/avatar`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ key }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to confirm avatar upload: ${res.status} ${res.statusText}`);
+  }
+
+  return res.json();
+}

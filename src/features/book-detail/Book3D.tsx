@@ -25,11 +25,19 @@ export default function Book3D({ book }: Book3DProps) {
   const [spineColor, setSpineColor] = useState(FALLBACK_SPINE_COLOR);
 
   // Suspends until the cover loads (caught by the <Suspense> in BookScene).
-  // CORS on covers.openlibrary.org is "*", so the texture stays canvas-clean
-  // and WebGL accepts it. We tag it sRGB so the cover's colors aren't washed
-  // out, and bump anisotropy so it stays crisp at glancing angles. The same
-  // clean image lets us read its average color for the spine/back.
-  const cover = useTexture(book.coverUrl, (loaded) => {
+  // textureUrl is the larger S3/CloudFront variant made for close-up 3D use
+  // (falls back to coverUrl for books added before that pipeline existed).
+  // covers.openlibrary.org sends Access-Control-Allow-Origin: *, which is what
+  // keeps the texture canvas-clean for the pixel read below. CloudFront's CORS
+  // headers haven't been confirmed the same way yet (not verified end-to-end
+  // against real AWS) — if it turns out not to send that header, deriveSpineColor's
+  // canvas read will throw on cross-origin S3-backed covers and need a fix
+  // (either a CloudFront response-headers policy adding the header, or
+  // crossOrigin left off + reading color server-side at ingest instead — see
+  // CLAUDE.md's "Spine color at ingest" future item). We tag it sRGB so the
+  // cover's colors aren't washed out, and bump anisotropy so it stays crisp at
+  // glancing angles.
+  const cover = useTexture(book.textureUrl, (loaded) => {
     const texture = Array.isArray(loaded) ? loaded[0] : loaded;
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = 8;

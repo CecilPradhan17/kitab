@@ -69,9 +69,10 @@ usersRouter.get("/:username/books", async (req, res) => {
   try {
     const result = await pool.query<Book>(
       `SELECT b.id, b.title, b.author,
-              b.cover_url           AS "coverUrl",
-              b.date_started::text  AS "dateStarted",
-              b.date_finished::text AS "dateFinished",
+              b.cover_url                                AS "coverUrl",
+              COALESCE(b.cover_texture_url, b.cover_url) AS "textureUrl",
+              b.date_started::text                       AS "dateStarted",
+              b.date_finished::text                      AS "dateFinished",
               b.quote
        FROM books b
        JOIN users u ON b.user_id = u.id

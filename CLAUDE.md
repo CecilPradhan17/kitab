@@ -27,10 +27,14 @@ gold accents, metadata, and a quote — downloadable as a PNG for sharing.
 
 ## Current phase
 
-**V1 feature-complete, not yet deployed.** The full stack is connected:
-Express API running in `server/`, Postgres via Docker, Next.js frontend wired
-to the real API. All core CRUD flows are built and working locally. Next
-milestone is deployment (Vercel + Railway/Render), followed by auth/profiles.
+**Core app, auth, profiles, and avatar upload built; not yet deployed.** The
+full stack is connected: Express API running in `server/`, Postgres via
+Docker, Next.js frontend wired to the real API. Book CRUD, JWT auth, public
+profile pages at `/[username]`, and S3/CloudFront avatar upload are all built
+and working locally — see the "Auth" and "Image storage & CDN" sections below
+for the locked-in architecture. Avatar upload is implemented end-to-end in
+code but not yet verified against real AWS — `server/.env` has no real AWS
+credentials in it yet. Next milestone is deployment (Vercel + Railway/Render).
 
 ## Backend decisions (locked in, with reasoning)
 
@@ -66,6 +70,40 @@ milestone is deployment (Vercel + Railway/Render), followed by auth/profiles.
   imports gotcha while learning); `strict` on. Dev runs via `tsx watch`;
   production path is `tsc` build → `node dist`.
 
+## Auth (locked in, with reasoning)
+
+- **JWT in `localStorage`, not httpOnly cookies.** Originally built with
+  httpOnly cookies set via Next.js route handler proxies (browser → Next
+  route handler → Express), but pivoted away from that: cookies can't be
+  forwarded cross-origin from client-side writes without a proxy in front of
+  every single mutating endpoint, which meant a full duplicate route layer in
+  Next.js for no real benefit. The JWT is now stored in `localStorage`
+  (`src/lib/auth.ts`) and sent as a `Bearer` header directly to Express from
+  anywhere client-side — no proxy hop needed. The logged-in user object
+  (`{ id, username, displayName }`) is cached in `localStorage` alongside the
+  token, so pages can check "is this me?" (e.g. showing edit controls)
+  without decoding the JWT.
+- **Manual JWT + bcrypt, not Lucia/Auth.js.** Deliberate choice for maximum
+  learning — same reasoning as the raw-SQL DB layer. `server/src/lib/jwt.ts`
+  signs/verifies 7-day tokens; `server/src/middleware/requireAuth.ts` reads
+  the `Bearer` header and attaches `req.user`.
+- **Route auth model:** book CRUD (`/api/books`) requires auth and scopes to
+  `req.user.userId`. Profile/library reads are public
+  (`GET /api/users/:username`, `GET /api/users/:username/books`) so a shared
+  profile link works for any visitor; profile/avatar writes
+  (`PATCH /api/users/me`, `POST`/`PATCH /api/users/me/avatar`) are auth-gated
+  and scoped to the authenticated user's own row.
+- **Single page for owner and visitors — no separate private "home" page.**
+  `/[username]` is the only library route. `/` is a pure client-side redirect
+  (to `/${username}` if a user is stored locally, else `/login`) with no UI
+  of its own. `isOwner` (`currentUser?.username === username`, read from
+  `localStorage`) is computed once at the page level and threaded down
+  through `ProfileHeader` → `LibraryView` → `LibraryGrid` / `BookDetailModal`
+  to gate add/edit/delete and profile-editing UI. This is presentational
+  only — the real security boundary is Express independently rejecting
+  unauthenticated or mismatched-user writes; hiding a button client-side is
+  never the actual control.
+
 ## Image storage & CDN (locked in, with reasoning)
 
 - **Object storage: AWS S3.** Chosen over Cloudflare R2/Supabase Storage
@@ -82,11 +120,20 @@ milestone is deployment (Vercel + Railway/Render), followed by auth/profiles.
   (hotlinking, traffic spikes) — CloudFront closes that, it does not add to
   the bill.
 - **Two asset types, same pattern (presigned upload, never proxy through Express):**
-  - **Profile photos**: client requests a presigned PUT URL from Express
-    (auth-gated — only a logged-in user can request one for their own
-    user id), uploads directly to S3, then tells the API the resulting
-    object key to store on the `users` row. Resized server-side via `sharp`
-    to a single small thumbnail variant.
+  - **Profile photos** (built): client requests a presigned PUT URL from
+    Express (auth-gated, rate-limited 10/15min per user), uploads directly to
+    a raw key (`avatars/raw/{userId}/{randomUUID}`), then confirms with the
+    key. Express fetches the raw upload back from S3, resizes it via `sharp`
+    to a single 256×256 WebP thumbnail (`fit: cover`, quality 82 — WebP over
+    JPEG so a transparent PNG upload isn't flattened to a solid background),
+    publishes it to a new serving key, updates `avatar_url` to the CloudFront
+    URL, and best-effort deletes both the raw object and any previous avatar
+    (a cleanup failure doesn't fail the request — the new avatar is already
+    live by that point). A fresh random key per upload means a replaced
+    avatar naturally gets a new CDN URL, so no cache invalidation is needed.
+    The confirm endpoint also rejects any key not prefixed with the
+    requesting user's own `avatars/raw/{userId}/` namespace — otherwise a
+    client could hand the server another user's raw upload key.
   - **Book covers**: fetched server-side from Open Library by ISBN at
     insert/ingest time (not client-uploaded), deduplicated by ISBN so a
     book owned by multiple users is stored once, resized via `sharp` into
@@ -163,21 +210,34 @@ URL.
 
 **API surface (Express, `server/src/routes/`):**
 
-- `GET /api/books` — full library, ordered by `date_finished, created_at, id`
-- `POST /api/books` — add a book; body: `{ title, author, isbn, dateStarted?, dateFinished?, quote? }`
-- `PATCH /api/books/:id` — update quote only; body: `{ quote }`
-- `DELETE /api/books/:id` — remove a book
+- `POST /api/auth/register` / `POST /api/auth/login` — returns `{ token, user }`
+- `GET /api/books` — the authenticated user's library (auth-gated, scoped to
+  `req.user.userId`), ordered by `date_finished, created_at, id`
+- `POST /api/books` — add a book; body: `{ title, author, isbn, dateStarted?, dateFinished?, quote? }` (auth-gated)
+- `PATCH /api/books/:id` — update quote only; body: `{ quote }` (auth-gated)
+- `DELETE /api/books/:id` — remove a book (auth-gated)
 - `GET /api/book-search?q=` — proxies Open Library search, returns `{ title, author, isbn, coverUrl }[]`
+- `GET /api/users/:username` — public profile (404 if unknown)
+- `GET /api/users/:username/books` — public library for a username, no auth
+- `PATCH /api/users/me` — update `displayName`/`bio` (auth-gated)
+- `POST /api/users/me/avatar` — issues a presigned S3 upload URL (auth-gated, rate-limited)
+- `PATCH /api/users/me/avatar` — confirms + resizes the upload, finalizes `avatar_url` (auth-gated)
 
 **Frontend data modules** (all presentational — components take props, never
 fetch directly):
 
-- `src/features/library/booksApi.ts` — `getBooks()`, runs server-side (RSC),
-  assigns `bookNumber` by position
+- `src/features/library/booksApi.ts` — `getPublicBooks(username)`, client-side,
+  used by both the owner and visitors on `/[username]`; assigns `bookNumber`
+  by position
 - `src/features/add-book/addBookApi.ts` — `searchBooks()` + `addBook()`,
   client-side (CORS-enabled, uses `NEXT_PUBLIC_API_URL`)
 - `src/features/book-detail/bookDetailApi.ts` — `updateBookQuote()` +
   `deleteBook()`, client-side
+- `src/features/profile/profileApi.ts` — `getProfile()` + `updateProfile()` +
+  `requestAvatarUpload()` + `uploadAvatarFile()` + `confirmAvatarUpload()`, client-side
+- `src/lib/auth.ts` — `getStoredToken`/`setStoredToken`/`clearStoredToken` +
+  `getStoredUser`/`setStoredUser`/`clearStoredUser`, the `localStorage` layer
+  underneath the auth model described above
 
 ## Architecture decisions (locked in, with reasoning)
 
@@ -274,25 +334,23 @@ haven't fully loaded at capture time. Must await `document.fonts.ready` (or
 explicitly load fonts via FontFace API) before triggering the capture. This is
 a known failure mode — do not skip it.
 
-## Public profile page (`/[username]`)
+## Library page (`/[username]`)
 
-The route exists at `src/app/[username]/page.tsx`. Current state:
-
-- Books are fetched from the real API (`getBooks()`), same as the home page
-- The profile header (name, bio, avatar) is still mock data from
-  `src/features/profile/mockProfile.ts` — the profile API and auth don't exist yet
-- The `[username]` route param is intentionally ignored for now; any path
-  renders the same mock profile
-- The library is read-only on the public page — no add/edit/delete affordances
-
-This page is shareable in its current form; it just always shows the same
-profile until auth is built.
+`src/app/[username]/page.tsx` — the single route for a user's library,
+whether it's being viewed by its owner or any visitor (see the "Auth"
+section above for the `isOwner` reasoning). A client component: fetches
+`getProfile(username)` and `getPublicBooks(username)` in parallel on mount,
+computes `isOwner`, and renders a not-found state if the profile fetch
+returns null. Renders `ProfileHeader` (identity, avatar, owner-only edit
+triggers) and `LibraryView` (the grid + detail modal, owner-only add/edit/
+delete). Shareable as-is by anyone, since the underlying data fetches are
+public endpoints.
 
 ## Folder structure
 
 **Feature-based, not type-based.** Group files by what feature/domain they
 belong to, not by file type. Reason: this project has a small number of clear
-features (library, book detail, story export, eventually auth/profile), and
+features (library, book detail, story export, add-book, profile), and
 building/reviewing one feature at a time (per our workflow) maps naturally onto
 folders organized the same way. It also keeps everything needed for one feature
 in one place rather than scattered across generic `components`/`hooks`/`utils`
@@ -301,47 +359,65 @@ folders.
 ```
 src/
   /app
-    page.tsx                ← home library (RSC, calls getBooks)
+    page.tsx                ← pure redirect: /${username} if logged in, else /login
     layout.tsx
+    /login
+      page.tsx
+    /register
+      page.tsx
     /[username]
-      page.tsx              ← public profile page (RSC; mock profile, real books)
+      page.tsx              ← the single library page (client component), owner + visitors
   /features
     /library
       BookCard.tsx
-      LibraryGrid.tsx
-      LibraryView.tsx       ← client coordinator: owns selected-book state
-      mockBooks.ts          ← Book type + (unused) mock array
-      booksApi.ts           ← getBooks() — server-side RSC fetch
+      LibraryGrid.tsx        ← owner-only add-book tile
+      LibraryView.tsx        ← client coordinator: owns selected-book state
+      mockBooks.ts           ← Book type + (unused) mock array
+      booksApi.ts            ← getPublicBooks() — client-side
     /add-book
-      AddBookButton.tsx
-      AddBookModal.tsx      ← search phase → details phase → POST /api/books
-      addBookApi.ts         ← searchBooks() + addBook() — client-side
+      AddBookButton.tsx       ← grid-tile trigger; modal portaled to document.body
+      AddBookModal.tsx        ← search phase → details phase → POST /api/books
+      addBookApi.ts           ← searchBooks() + addBook() — client-side
     /book-detail
-      BookDetailModal.tsx   ← quote editing + delete + "Share to story" trigger
+      BookDetailModal.tsx    ← isOwner-gated quote editing + delete + "Share to story"
       Book3D.tsx
       BookScene.tsx
-      bookDetailApi.ts      ← updateBookQuote() + deleteBook() — client-side
+      bookDetailApi.ts       ← updateBookQuote() + deleteBook() — client-side
     /story-export
-      ExportModal.tsx       ← offscreen render → preview → copy/download
-      StoryExportCard.tsx   ← the 1080×1920 card layout
-      renderBook.ts         ← offscreen WebGLRenderer pipeline
+      ExportModal.tsx        ← offscreen render → preview → copy/download
+      StoryExportCard.tsx    ← the 1080×1920 card layout
+      renderBook.ts          ← offscreen WebGLRenderer pipeline
     /profile
-      ProfileHeader.tsx
-      mockProfile.ts        ← placeholder until profile API exists
+      ProfileHeader.tsx       ← isOwner-gated edit-profile + change-photo triggers
+      EditProfileModal.tsx    ← displayName/bio only
+      AvatarUploadModal.tsx   ← dedicated avatar upload, separate from EditProfileModal
+      profileApi.ts
       types.ts
   /lib
-    coverColor.ts           ← dominant-hue extraction for 3D spine tint
+    auth.ts                  ← localStorage token/user helpers
+    coverColor.ts             ← dominant-hue extraction for 3D spine tint
 server/
   /src
-    app.ts                  ← Express app factory
-    index.ts                ← server entrypoint
-    db.ts                   ← pg pool
+    app.ts                   ← Express app factory
+    index.ts                 ← server entrypoint
+    db.ts                    ← pg pool
+    /lib
+      jwt.ts                  ← sign/verify JWT
+      s3.ts                   ← S3Client + bucket/CloudFront constants
+    /middleware
+      requireAuth.ts          ← reads Bearer token, attaches req.user
+    /types
+      express.d.ts             ← augments Express Request with req.user
     /routes
-      books.ts              ← GET / POST / PATCH /:id / DELETE /:id
-      bookSearch.ts         ← GET ?q= (Open Library proxy)
+      auth.ts                  ← POST /register, POST /login
+      books.ts                 ← auth-gated, scoped to req.user
+      bookSearch.ts             ← GET ?q= (Open Library proxy)
+      users.ts                  ← profile reads (public) + profile/avatar writes (auth-gated)
   /db
     01_schema.sql
     02_seed.sql
+    03_users.sql              ← users table + user_id FK on books
+    04_dev_seed.sql           ← dev user cecildev
   docker-compose.yml
 ```
 
@@ -383,29 +459,35 @@ Do not pre-create empty folders for features that haven't started yet.
   reviewed or reverted easily.
 - **Scope changes narrowly.** If asked to fix or build one thing, don't modify
   unrelated files or "improve" things that weren't asked for.
+- **Never read or edit `server/.env` directly.** Blocked via
+  `.claude/settings.local.json` deny rules (`Read(.env)`, `Read(.env.*)`) —
+  this is deliberate, not a gap to route around. The developer handles all
+  `.env` edits themselves. When a task needs an env var added or changed,
+  tell them the exact key and value to set — don't ask them to paste secrets
+  back into chat. `.env.example` (the committed, secret-free template) stays
+  fully editable by Claude Code and should be kept in sync whenever a new
+  required env var is introduced.
 
 ## What's next (post-V1)
 
-These are planned but not started — in rough priority order:
+In rough priority order:
 
 1. **Deployment** — Vercel (frontend) + Railway or Render (Express). Env vars
    to wire: `API_URL` (server-side) and `NEXT_PUBLIC_API_URL` (client-side)
    pointing at the deployed Express URL; `FRONTEND_ORIGIN` on Express pointing
    at the Vercel URL.
-2. **Auth + profiles** — Users, login, and real `[username]` routing. The
-   profile page and mock data are intentionally placeholders for this.
-3. **Auth + profile photo upload** (in progress) — sessions/JWT built manually
-   (deliberate choice over Lucia/Auth.js, more learning). Profile photo
-   upload via S3 presigned URLs — see "Image storage & CDN" section for the
-   full design.
-4. **Image caching** (design locked, not yet implemented) — fetch and store
+2. **Verify avatar upload end-to-end with real AWS credentials** — the S3 +
+   CloudFront presigned-upload pipeline (see "Image storage & CDN") is built
+   and unit-verified, but no image has actually gone through the full flow
+   against real AWS yet.
+3. **Image caching** (design locked, not yet implemented) — fetch and store
    cover images at ingest time rather than linking Open Library directly, via
-   the S3 + CloudFront pipeline above. Two variants per ISBN (grid + 3D
-   texture).
-5. **Spine color at ingest** — Move dominant-hue extraction server-side (via
+   the same S3 + CloudFront pipeline built for avatars. Two variants per ISBN
+   (grid + 3D texture).
+4. **Spine color at ingest** — Move dominant-hue extraction server-side (via
    `sharp`) and store it as a `spineColor` field on the book, so the frontend
    reads it from props instead of computing it client-side on every load.
-6. **"Share to Instagram"** — Web Share API on mobile. Placeholder comment
+5. **"Share to Instagram"** — Web Share API on mobile. Placeholder comment
    already in `ExportModal.tsx`.
 
 ## When to update this file

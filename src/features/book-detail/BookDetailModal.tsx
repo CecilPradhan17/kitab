@@ -24,11 +24,48 @@ interface BookDetailModalProps {
   onBookDeleted: () => void;
 }
 
-/** Format an ISO date (e.g. "2024-05-12") as "May 2024" for the editorial
-    metadata line. Kept local — it's presentation, not domain logic. */
+/** Format an ISO date (e.g. "2024-05-12") as "May 2024". */
 function formatMonthYear(iso: string): string {
   const date = new Date(iso);
   return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+/** Renders the started/finished pair as a single sentence, collapsing the
+    redundant parts: same month reads as one date, same year drops the
+    repeated year on the start side. Kept local — it's presentation, not
+    domain logic. */
+function formatReadingRange(startIso: string, finishIso: string): string {
+  const start = new Date(startIso);
+  const finish = new Date(finishIso);
+
+  const sameMonth =
+    start.getFullYear() === finish.getFullYear() &&
+    start.getMonth() === finish.getMonth();
+  if (sameMonth) return `Read in ${formatMonthYear(finishIso)}`;
+
+  const sameYear = start.getFullYear() === finish.getFullYear();
+  if (sameYear) {
+    const startMonth = start.toLocaleDateString("en-US", { month: "long" });
+    return `${startMonth} – ${formatMonthYear(finishIso)}`;
+  }
+
+  return `${formatMonthYear(startIso)} – ${formatMonthYear(finishIso)}`;
+}
+
+/** "1st", "2nd", "3rd", "4th", ... — handles the 11th/12th/13th exception. */
+function ordinal(n: number): string {
+  const rem100 = n % 100;
+  if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1:
+      return `${n}st`;
+    case 2:
+      return `${n}nd`;
+    case 3:
+      return `${n}rd`;
+    default:
+      return `${n}th`;
+  }
 }
 
 export default function BookDetailModal({
@@ -166,26 +203,42 @@ export default function BookDetailModal({
           </span>
         </button>
 
-        {/* The live 3D book. Keyed on book.id so switching books remounts the
-            scene with a fresh texture instead of mutating the existing one. */}
-        <div className="relative mx-auto aspect-[2/3] w-64 shrink-0 sm:mx-0 sm:w-72">
-          <BookScene key={book.id} book={book} />
+        {/* The live 3D book, staged on a soft warm glow — an exhibit under a
+            spotlight, not a flat cutout. Keyed on book.id so switching books
+            remounts the scene with a fresh texture instead of mutating the
+            existing one. The milestone label sits centered above it. */}
+        <div className="flex flex-col items-center shrink-0">
+          <span className="mb-3 font-sans text-[0.65rem] uppercase tracking-[0.2em] text-accent">
+            {ordinal(book.bookNumber)} book {isOwner ? "you've read" : "read"}
+          </span>
+
+          <div className="relative aspect-[2/3] w-64 sm:w-72">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-[-20%] rounded-full opacity-70 blur-2xl"
+              style={{
+                background:
+                  "radial-gradient(ellipse 55% 60% at 50% 45%, rgba(201,151,58,0.18) 0%, rgba(201,151,58,0) 70%)",
+              }}
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-[15%] bottom-[6%] h-6 rounded-full opacity-80 blur-md"
+              style={{ background: "rgba(201,151,58,0.35)" }}
+            />
+            <BookScene key={book.id} book={book} />
+          </div>
         </div>
 
         {/* Metadata, editorial style */}
         <div className="flex flex-1 flex-col">
-          <span className="font-sans text-[0.65rem] uppercase tracking-[0.2em] text-accent">
-            #{book.bookNumber}
-          </span>
-
-          <h2 className="mt-3 font-serif text-3xl leading-tight text-foreground">
+          <h2 className="font-serif text-3xl leading-tight text-foreground">
             {book.title}
           </h2>
           <p className="mt-1 font-sans text-base text-muted">{book.author}</p>
 
           <p className="mt-6 font-sans text-[0.65rem] uppercase tracking-[0.2em] text-muted">
-            {formatMonthYear(book.dateStarted)} &mdash;{" "}
-            {formatMonthYear(book.dateFinished)}
+            {formatReadingRange(book.dateStarted, book.dateFinished)}
           </p>
 
           {editingQuote && isOwner ? (
@@ -222,56 +275,63 @@ export default function BookDetailModal({
             </div>
           ) : (
             <div className="mt-8">
-              <blockquote className="border-l-2 border-accent/60 pl-5 font-serif text-lg italic leading-relaxed text-foreground/90">
+              <blockquote className="font-serif text-xl italic leading-relaxed text-foreground/90">
                 &ldquo;{book.quote}&rdquo;
               </blockquote>
               {isOwner && (
                 <button
                   type="button"
                   onClick={startEditingQuote}
-                  className="mt-3 font-sans text-xs uppercase tracking-[0.2em] text-accent outline-none transition-colors hover:text-foreground focus-visible:underline"
+                  aria-label="Edit quote"
+                  title="Edit quote"
+                  className="mt-3 flex h-7 w-7 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
                 >
-                  Edit quote
+                  <PencilIcon />
                 </button>
               )}
             </div>
           )}
 
-          {/* Opens the export preview/share modal, stacked on top of this one. */}
+          {/* Opens the export preview/share modal, stacked on top of this one.
+              The one solid-gold element in the modal — this is the pride-to-
+              share moment, so it's the loudest thing on screen. */}
           <button
             type="button"
             onClick={() => setExporting(true)}
-            className="mt-8 inline-flex self-start rounded-full border border-accent/50 px-5 py-2.5 font-sans text-xs uppercase tracking-[0.2em] text-accent outline-none transition-colors hover:bg-accent hover:text-background focus-visible:ring-2 focus-visible:ring-accent"
+            className="mt-8 inline-flex self-center rounded-full bg-accent px-5 py-2 font-sans text-[0.65rem] uppercase tracking-[0.2em] text-background outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f0f]"
           >
-            Share to story
+            Share
           </button>
+        </div>
 
-          {/* Delete affordance — de-emphasised, with an inline two-step confirm
-              since the action is destructive and can't be undone. */}
-          {isOwner && (
-          <div className="mt-auto pt-8">
+        {/* Delete affordance — bottom-right corner, below the close button,
+            out of the metadata column's reading flow entirely. Confirm step
+            opens as a small popover anchored to the same corner since the
+            action is destructive and can't be undone. */}
+        {isOwner && (
+          <div className="absolute bottom-4 right-4">
             {confirmingDelete ? (
-              <div className="flex flex-col gap-3">
-                <p className="font-sans text-sm text-muted">
+              <div className="w-60 rounded-xl border border-white/10 bg-[#161616] p-4 shadow-xl shadow-black/60">
+                <p className="font-sans text-xs leading-relaxed text-muted">
                   Remove <span className="text-foreground">{book.title}</span>{" "}
                   from your library? This can&rsquo;t be undone.
                 </p>
                 {deleteError && (
-                  <p className="font-sans text-sm text-red-400/80">{deleteError}</p>
+                  <p className="mt-2 font-sans text-xs text-red-400/80">{deleteError}</p>
                 )}
-                <div className="flex gap-3">
+                <div className="mt-3 flex gap-2">
                   <button
                     type="button"
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="inline-flex rounded-full border border-red-400/40 px-5 py-2 font-sans text-xs uppercase tracking-[0.2em] text-red-300/90 outline-none transition-colors hover:bg-red-400/90 hover:text-background focus-visible:ring-2 focus-visible:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-red-300/90"
+                    className="inline-flex rounded-full border border-red-400/40 px-4 py-1.5 font-sans text-[0.65rem] uppercase tracking-[0.15em] text-red-300/90 outline-none transition-colors hover:bg-red-400/90 hover:text-background focus-visible:ring-2 focus-visible:ring-red-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-red-300/90"
                   >
                     {deleting ? "Deleting…" : "Delete"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmingDelete(false)}
-                    className="inline-flex rounded-full px-5 py-2 font-sans text-xs uppercase tracking-[0.2em] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+                    className="inline-flex rounded-full px-4 py-1.5 font-sans text-[0.65rem] uppercase tracking-[0.15em] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     Cancel
                   </button>
@@ -281,14 +341,15 @@ export default function BookDetailModal({
               <button
                 type="button"
                 onClick={() => setConfirmingDelete(true)}
-                className="font-sans text-xs uppercase tracking-[0.2em] text-muted outline-none transition-colors hover:text-red-300/90 focus-visible:underline"
+                aria-label="Remove from library"
+                title="Remove from library"
+                className="flex h-9 w-9 items-center justify-center rounded-full text-muted outline-none transition-colors hover:bg-white/5 hover:text-red-300/90 focus-visible:ring-2 focus-visible:ring-accent"
               >
-                Remove from library
+                <TrashIcon />
               </button>
             )}
           </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
 
@@ -300,5 +361,48 @@ export default function BookDetailModal({
       onClose={() => setExporting(false)}
     />
     </>
+  );
+}
+
+/** Thin-stroke line icons, sized to match the small icon-only trigger
+    buttons. Hand-rolled rather than pulling in an icon library for two
+    glyphs — see CLAUDE.md on flagging new dependencies. */
+function PencilIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 20 20"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M13.5 3.5 16.5 6.5 6.5 16.5 3 17l0.5-3.5Z" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 20 20"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M4 6h12" />
+      <path d="M8 6V4.5h4V6" />
+      <path d="M5.5 6 6 16.5h8L14.5 6" />
+      <path d="M8.5 9v4.5" />
+      <path d="M11.5 9v4.5" />
+    </svg>
   );
 }

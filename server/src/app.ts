@@ -9,15 +9,7 @@ import { usersRouter } from "./routes/users";
 // (Next RSC -> Express) and need no CORS, but the add-book modal calls Express
 // from the browser, which is cross-origin. Defaults to the Next dev server;
 // override with FRONTEND_ORIGIN in production (e.g. the Vercel URL).
-//
-// TEMPORARY: also allowing :3001 so a second local frontend (running from a
-// parallel git worktree, on another port) can hit this same shared dev
-// backend. Remove the extra origin once that worktree session is done —
-// production should only ever pass a single FRONTEND_ORIGIN.
-const FRONTEND_ORIGINS = [
-  process.env.FRONTEND_ORIGIN ?? "http://localhost:3000",
-  "http://localhost:3001",
-];
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? "http://localhost:3000";
 
 /**
  * Builds and configures the Express application.
@@ -29,9 +21,9 @@ const FRONTEND_ORIGINS = [
 export function createApp(): Express {
   const app = express();
 
-  // Allow the browser frontend to call this API cross-origin. Scoped to a
-  // known allowlist rather than "*" — we only serve our own frontend(s).
-  app.use(cors({ origin: FRONTEND_ORIGINS }));
+  // Allow the browser frontend to call this API cross-origin. Scoped to a single
+  // known origin rather than "*" — we only serve our own frontend.
+  app.use(cors({ origin: FRONTEND_ORIGIN }));
 
   // Parse JSON request bodies into req.body. Needed once we add write endpoints.
   app.use(express.json());

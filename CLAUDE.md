@@ -27,14 +27,19 @@ gold accents, metadata, and a quote — downloadable as a PNG for sharing.
 
 ## Current phase
 
-**Core app, auth, profiles, and avatar upload built; not yet deployed.** The
-full stack is connected: Express API running in `server/`, Postgres via
-Docker, Next.js frontend wired to the real API. Book CRUD, JWT auth, public
-profile pages at `/[username]`, and S3/CloudFront avatar upload are all built
-and working locally — see the "Auth" and "Image storage & CDN" sections below
-for the locked-in architecture. Avatar upload is implemented end-to-end in
-code but not yet verified against real AWS — `server/.env` has no real AWS
-credentials in it yet. Next milestone is deployment (Vercel + Railway/Render).
+**Core app, auth, profiles, avatar upload, and S3 cover-image storage built;
+not yet deployed.** The full stack is connected: Express API running in
+`server/`, Postgres via Docker, Next.js frontend wired to the real API. Book
+CRUD, JWT auth, public profile pages at `/[username]`, S3/CloudFront avatar
+upload, and S3/CloudFront book-cover ingest are all built — see the "Auth"
+and "Image storage & CDN" sections below for the locked-in architecture.
+Avatar upload is verified end-to-end against real AWS, including the browser
+upload flow (the S3 bucket needed a CORS configuration allowing the presigned
+PUT from the frontend origin — curl-testing the endpoints alone hadn't caught
+this, since curl doesn't exercise CORS preflight). Book-cover ingest
+(`getOrIngestCover`, wired into `POST /api/books`) is code-complete and
+type-checked but not yet run against real AWS. Next milestone is deployment
+(Vercel + Railway/Render).
 
 ## Backend decisions (locked in, with reasoning)
 
@@ -134,13 +139,14 @@ credentials in it yet. Next milestone is deployment (Vercel + Railway/Render).
     The confirm endpoint also rejects any key not prefixed with the
     requesting user's own `avatars/raw/{userId}/` namespace — otherwise a
     client could hand the server another user's raw upload key.
-  - **Book covers**: fetched server-side from Open Library by ISBN at
-    insert/ingest time (not client-uploaded), deduplicated by ISBN so a
-    book owned by multiple users is stored once, resized via `sharp` into
-    two variants (grid thumbnail, 3D texture res), uploaded to S3, and the
-    resulting URLs stored on the book row instead of linking Open Library
-    directly. Supersedes the old "link Open Library directly" approach —
-    see updated `coverUrl` note below.
+  - **Book covers** (built, not yet verified against real AWS): fetched
+    server-side from Open Library by ISBN at insert/ingest time (not
+    client-uploaded), deduplicated by ISBN so a book owned by multiple users
+    is stored once, resized via `sharp` into two variants (grid thumbnail, 3D
+    texture res), uploaded to S3, and the resulting URLs stored on the book
+    row instead of linking Open Library directly. Falls back to linking Open
+    Library directly on ingest failure — see `coverUrl`/`textureUrl` notes
+    in "Data layer" below.
 - **IAM scoping:** Express's S3 credentials are scoped to
   `PutObject`/`GetObject` on this bucket only — never root/account-wide
   credentials.
@@ -196,6 +202,7 @@ type Book = {
   title: string;
   author: string;
   coverUrl: string;
+  textureUrl: string; // larger variant for the 3D render; falls back to coverUrl for pre-ingest-pipeline rows
   dateStarted: string;
   dateFinished: string;
   bookNumber: number; // derived in getBooks (by date_finished order), not stored/returned by the API
@@ -203,10 +210,11 @@ type Book = {
 };
 ```
 
-**Cover URLs** are Open Library by ISBN —
-`https://covers.openlibrary.org/b/isbn/{ISBN}-L.jpg` — derived by the server
-at insert time from the ISBN the client sends. Never stored as a user-supplied
-URL.
+**Cover URLs** are S3/CloudFront, ingested once per unique ISBN at insert time
+via `getOrIngestCover` (see "Image sourcing" above) — never a user-supplied
+URL. `book_covers` is the ISBN-keyed cache; `books.cover_url` /
+`books.cover_texture_url` are copied from it on insert. Falls back to linking
+`https://covers.openlibrary.org/b/isbn/{ISBN}-L.jpg` directly if ingest fails.
 
 **API surface (Express, `server/src/routes/`):**
 
@@ -270,10 +278,13 @@ fetch directly):
   client-side from the loaded cover texture (canvas downscale → dominant-hue
   vote → re-light). Moving this to ingest-time is a future milestone — see
   spine color note below.
-- **Image sourcing (future, not yet built):** Cover images currently come from
-  Open Library by ISBN, linked directly. Future plan: fetch once per unique
-  ISBN at ingest time, cache in our own storage, serve two variants (small for
-  grid, large for 3D texture). Not yet implemented.
+- **Image sourcing (built):** Cover images are fetched once per unique ISBN at
+  ingest time (`server/src/lib/coverIngest.ts`, called from `POST /api/books`),
+  resized via `sharp` into two variants (500×750 grid, 1000×1500 3D texture),
+  and cached in `book_covers` (keyed by ISBN) so a book added by multiple users
+  is only fetched/resized/uploaded once. Falls back to linking Open Library
+  directly on any fetch/resize failure, so adding a book never fails because
+  of the cover pipeline. Not yet run against real AWS — see "What's next".
 - **Spine color computed at ingest (future, not yet built):** When the backend
   ingests a book and fetches its cover, it will also compute the cover's dominant
   color and store it as a field on the book (e.g. `spineColor` on the `Book`
@@ -404,6 +415,7 @@ server/
     /lib
       jwt.ts                  ← sign/verify JWT
       s3.ts                   ← S3Client + bucket/CloudFront constants
+      coverIngest.ts           ← getOrIngestCover: fetch/resize/upload/dedupe covers by ISBN
     /middleware
       requireAuth.ts          ← reads Bearer token, attaches req.user
     /types
@@ -418,6 +430,7 @@ server/
     02_seed.sql
     03_users.sql              ← users table + user_id FK on books
     04_dev_seed.sql           ← dev user cecildev
+    05_book_covers.sql         ← book_covers cache table + books.cover_texture_url
   docker-compose.yml
 ```
 
@@ -472,22 +485,26 @@ Do not pre-create empty folders for features that haven't started yet.
 
 In rough priority order:
 
-1. **Deployment** — Vercel (frontend) + Railway or Render (Express). Env vars
+1. **Verify book-cover ingest end-to-end with real AWS** — `getOrIngestCover`
+   is code-complete and type-checked but has never actually run against real
+   AWS: add a book with a real ISBN and confirm the `covers/{isbn}/grid.webp`
+   + `covers/{isbn}/texture.webp` objects land in S3, `book_covers` gets the
+   row, and CloudFront serves both. Specifically worth checking: `Book3D.tsx`
+   reads the cover texture's pixels via canvas (`deriveSpineColor`), which
+   requires the image response to carry CORS headers — confirmed true for
+   `covers.openlibrary.org`, unconfirmed for CloudFront. If CloudFront doesn't
+   send `Access-Control-Allow-Origin`, that canvas read will throw for
+   S3-backed covers (see the comment in `Book3D.tsx`).
+2. **Deployment** — Vercel (frontend) + Railway or Render (Express). Env vars
    to wire: `API_URL` (server-side) and `NEXT_PUBLIC_API_URL` (client-side)
    pointing at the deployed Express URL; `FRONTEND_ORIGIN` on Express pointing
    at the Vercel URL.
-2. **Verify avatar upload end-to-end with real AWS credentials** — the S3 +
-   CloudFront presigned-upload pipeline (see "Image storage & CDN") is built
-   and unit-verified, but no image has actually gone through the full flow
-   against real AWS yet.
-3. **Image caching** (design locked, not yet implemented) — fetch and store
-   cover images at ingest time rather than linking Open Library directly, via
-   the same S3 + CloudFront pipeline built for avatars. Two variants per ISBN
-   (grid + 3D texture).
-4. **Spine color at ingest** — Move dominant-hue extraction server-side (via
+3. **Spine color at ingest** — Move dominant-hue extraction server-side (via
    `sharp`) and store it as a `spineColor` field on the book, so the frontend
-   reads it from props instead of computing it client-side on every load.
-5. **"Share to Instagram"** — Web Share API on mobile. Placeholder comment
+   reads it from props instead of computing it client-side on every load. Now
+   natural to build alongside `coverIngest.ts`, since that's already where the
+   cover bytes are fetched/resized server-side.
+4. **"Share to Instagram"** — Web Share API on mobile. Placeholder comment
    already in `ExportModal.tsx`.
 
 ## When to update this file

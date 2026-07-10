@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { pool } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
+import { getOrIngestCover } from "../lib/coverIngest";
 
 /**
  * The shape we return to clients. It mirrors the frontend `Book` type minus
@@ -14,6 +15,10 @@ export interface Book {
   title: string;
   author: string;
   coverUrl: string;
+  // Larger variant for the 3D render (detail view + story export). Books
+  // added before the cover-ingest pipeline existed have no stored
+  // cover_texture_url, so the SQL layer falls back to coverUrl for them.
+  textureUrl: string;
   dateStarted: string;
   dateFinished: string;
   quote: string;
@@ -36,9 +41,10 @@ booksRouter.get("/", requireAuth, async (req, res) => {
     //    is a final deterministic backstop.
     const result = await pool.query<Book>(
       `SELECT id, title, author,
-              cover_url           AS "coverUrl",
-              date_started::text  AS "dateStarted",
-              date_finished::text AS "dateFinished",
+              cover_url                              AS "coverUrl",
+              COALESCE(cover_texture_url, cover_url) AS "textureUrl",
+              date_started::text                     AS "dateStarted",
+              date_finished::text                    AS "dateFinished",
               quote
        FROM books
        WHERE user_id = $1
@@ -92,23 +98,27 @@ booksRouter.post("/", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "Invalid book", details: errors });
   }
 
-  // Derive the cover URL from the ISBN — same scheme the seed/mock data uses.
-  const coverUrl = `https://covers.openlibrary.org/b/isbn/${isbn.trim()}-L.jpg`;
+  // Fetch (or reuse a previously cached) S3/CloudFront cover for this ISBN.
+  // Falls back to linking Open Library directly on any failure, so this never
+  // fails the add-book request.
+  const { coverUrl, textureUrl } = await getOrIngestCover(isbn.trim());
 
   try {
     const result = await pool.query<Book>(
-      `INSERT INTO books (title, author, isbn, cover_url, date_started, date_finished, quote, user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO books (title, author, isbn, cover_url, cover_texture_url, date_started, date_finished, quote, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id, title, author,
-                 cover_url           AS "coverUrl",
-                 date_started::text  AS "dateStarted",
-                 date_finished::text AS "dateFinished",
+                 cover_url                              AS "coverUrl",
+                 COALESCE(cover_texture_url, cover_url) AS "textureUrl",
+                 date_started::text                     AS "dateStarted",
+                 date_finished::text                    AS "dateFinished",
                  quote;`,
       [
         title.trim(),
         author.trim(),
         isbn.trim(),
         coverUrl,
+        textureUrl,
         dateStarted ?? null,
         dateFinished ?? null,
         quote ?? null,
@@ -142,9 +152,10 @@ booksRouter.patch("/:id", requireAuth, async (req, res) => {
        SET quote = $1
        WHERE id = $2 AND user_id = $3
        RETURNING id, title, author,
-                 cover_url           AS "coverUrl",
-                 date_started::text  AS "dateStarted",
-                 date_finished::text AS "dateFinished",
+                 cover_url                              AS "coverUrl",
+                 COALESCE(cover_texture_url, cover_url) AS "textureUrl",
+                 date_started::text                     AS "dateStarted",
+                 date_finished::text                    AS "dateFinished",
                  quote;`,
       [quote.trim(), id, req.user!.userId]
     );

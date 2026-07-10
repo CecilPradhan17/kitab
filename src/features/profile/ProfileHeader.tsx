@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Profile } from "./types";
 import EditProfileModal from "./EditProfileModal";
+import AvatarUploadModal from "./AvatarUploadModal";
 
 interface ProfileHeaderProps {
   profile: Profile;
@@ -24,6 +25,7 @@ export default function ProfileHeader({
 }: ProfileHeaderProps) {
   const [profile, setProfile] = useState(initialProfile);
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const { username, displayName, bio, avatarUrl } = profile;
   const shownName = displayName?.trim() || username;
@@ -72,32 +74,48 @@ export default function ProfileHeader({
     >
       <div className="mx-auto flex max-w-[38rem] flex-col items-center text-center">
         {/* Avatar: circular image, or a dark circle with the user's initial.
-            Hairline gold ring marks it as the page's anchor. */}
-        {showFallback ? (
-          <div
-            aria-label={`${shownName} avatar`}
-            className="flex h-24 w-24 items-center justify-center rounded-full font-serif text-4xl sm:h-28 sm:w-28"
-            style={{
-              background: "#15110d",
-              color: "var(--accent)",
-              boxShadow:
-                "0 0 0 1px rgba(201, 151, 58, 0.25), 0 12px 32px rgba(0, 0, 0, 0.5)",
-            }}
-          >
-            {initial}
-          </div>
-        ) : (
-          <img
-            src={avatarUrl ?? undefined}
-            alt={`${shownName} avatar`}
-            onError={() => setImgFailed(true)}
-            className="h-24 w-24 rounded-full object-cover sm:h-28 sm:w-28"
-            style={{
-              boxShadow:
-                "0 0 0 1px rgba(201, 151, 58, 0.25), 0 12px 32px rgba(0, 0, 0, 0.5)",
-            }}
-          />
-        )}
+            Hairline gold ring marks it as the page's anchor. Owner-only
+            change trigger overlays the whole thing on hover/focus. */}
+        <div className="relative">
+          {showFallback ? (
+            <div
+              aria-label={`${shownName} avatar`}
+              className="flex h-24 w-24 items-center justify-center rounded-full font-serif text-4xl sm:h-28 sm:w-28"
+              style={{
+                background: "#15110d",
+                color: "var(--accent)",
+                boxShadow:
+                  "0 0 0 1px rgba(201, 151, 58, 0.25), 0 12px 32px rgba(0, 0, 0, 0.5)",
+              }}
+            >
+              {initial}
+            </div>
+          ) : (
+            <img
+              src={avatarUrl ?? undefined}
+              alt={`${shownName} avatar`}
+              onError={() => setImgFailed(true)}
+              className="h-24 w-24 rounded-full object-cover sm:h-28 sm:w-28"
+              style={{
+                boxShadow:
+                  "0 0 0 1px rgba(201, 151, 58, 0.25), 0 12px 32px rgba(0, 0, 0, 0.5)",
+              }}
+            />
+          )}
+
+          {isOwner && (
+            <button
+              type="button"
+              onClick={() => setIsUploadingAvatar(true)}
+              aria-label="Change photo"
+              className="absolute inset-0 flex items-center justify-center rounded-full bg-black/0 opacity-0 outline-none transition-all hover:bg-black/50 hover:opacity-100 focus-visible:bg-black/50 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-accent"
+            >
+              <span className="font-sans text-[0.6rem] uppercase tracking-[0.15em] text-white">
+                Change
+              </span>
+            </button>
+          )}
+        </div>
 
         {/* Identity: name and handle read as one unit, tightly paired. */}
         <h1 className="mt-6 font-serif text-3xl font-medium text-foreground sm:text-4xl">
@@ -165,6 +183,12 @@ export default function ProfileHeader({
           setProfile(updated);
           setIsEditing(false);
         }}
+      />
+
+      <AvatarUploadModal
+        profile={isUploadingAvatar ? profile : null}
+        onClose={() => setIsUploadingAvatar(false)}
+        onUploaded={(updated) => setProfile(updated)}
       />
     </header>
   );

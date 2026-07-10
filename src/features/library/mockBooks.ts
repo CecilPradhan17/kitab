@@ -15,6 +15,9 @@ export interface Book {
   title: string;
   author: string;
   coverUrl: string;
+  // Larger variant used for the 3D render (detail view + story export).
+  // Falls back to coverUrl on the API for books added before this existed.
+  textureUrl: string;
   dateStarted: string;   // ISO date, e.g. "2024-05-12"
   dateFinished: string;  // ISO date, e.g. "2024-05-28"
   bookNumber: number;
@@ -27,6 +30,7 @@ export const mockBooks: Book[] = [
     title: "The Alchemist",
     author: "Paulo Coelho",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9780061122415-L.jpg",
+    textureUrl: "https://covers.openlibrary.org/b/isbn/9780061122415-L.jpg",
     dateStarted: "2024-01-04",
     dateFinished: "2024-01-12",
     bookNumber: 41,
@@ -37,6 +41,7 @@ export const mockBooks: Book[] = [
     title: "Sapiens: A Brief History of Humankind",
     author: "Yuval Noah Harari",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9780062316097-L.jpg",
+    textureUrl: "https://covers.openlibrary.org/b/isbn/9780062316097-L.jpg",
     dateStarted: "2024-01-18",
     dateFinished: "2024-02-09",
     bookNumber: 42,
@@ -47,6 +52,7 @@ export const mockBooks: Book[] = [
     title: "Educated",
     author: "Tara Westover",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9780399590504-L.jpg",
+    textureUrl: "https://covers.openlibrary.org/b/isbn/9780399590504-L.jpg",
     dateStarted: "2024-02-14",
     dateFinished: "2024-02-27",
     bookNumber: 43,
@@ -57,6 +63,7 @@ export const mockBooks: Book[] = [
     title: "Atomic Habits",
     author: "James Clear",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg",
+    textureUrl: "https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg",
     dateStarted: "2024-03-02",
     dateFinished: "2024-03-15",
     bookNumber: 44,
@@ -67,6 +74,7 @@ export const mockBooks: Book[] = [
     title: "The Midnight Library",
     author: "Matt Haig",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9780525559474-L.jpg",
+    textureUrl: "https://covers.openlibrary.org/b/isbn/9780525559474-L.jpg",
     dateStarted: "2024-03-20",
     dateFinished: "2024-03-29",
     bookNumber: 45,
@@ -77,6 +85,7 @@ export const mockBooks: Book[] = [
     title: "Project Hail Mary",
     author: "Andy Weir",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9780593135204-L.jpg",
+    textureUrl: "https://covers.openlibrary.org/b/isbn/9780593135204-L.jpg",
     dateStarted: "2024-04-03",
     dateFinished: "2024-04-19",
     bookNumber: 46,
@@ -87,6 +96,7 @@ export const mockBooks: Book[] = [
     title: "Dune",
     author: "Frank Herbert",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9780441013593-L.jpg",
+    textureUrl: "https://covers.openlibrary.org/b/isbn/9780441013593-L.jpg",
     dateStarted: "2024-04-25",
     dateFinished: "2024-05-22",
     bookNumber: 47,
@@ -97,6 +107,7 @@ export const mockBooks: Book[] = [
     title: "Normal People",
     author: "Sally Rooney",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9781984822178-L.jpg",
+    textureUrl: "https://covers.openlibrary.org/b/isbn/9781984822178-L.jpg",
     dateStarted: "2024-05-27",
     dateFinished: "2024-06-04",
     bookNumber: 48,

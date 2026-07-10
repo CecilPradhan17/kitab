@@ -37,9 +37,9 @@ Avatar upload is verified end-to-end against real AWS, including the browser
 upload flow (the S3 bucket needed a CORS configuration allowing the presigned
 PUT from the frontend origin — curl-testing the endpoints alone hadn't caught
 this, since curl doesn't exercise CORS preflight). Book-cover ingest
-(`getOrIngestCover`, wired into `POST /api/books`) is code-complete and
-type-checked but not yet run against real AWS. Next milestone is deployment
-(Vercel + Railway/Render).
+(`getOrIngestCover`, wired into `POST /api/books`) is also now verified
+end-to-end against real AWS. Next milestone is deployment (Vercel +
+Railway/Render).
 
 ## Backend decisions (locked in, with reasoning)
 
@@ -139,7 +139,7 @@ type-checked but not yet run against real AWS. Next milestone is deployment
     The confirm endpoint also rejects any key not prefixed with the
     requesting user's own `avatars/raw/{userId}/` namespace — otherwise a
     client could hand the server another user's raw upload key.
-  - **Book covers** (built, not yet verified against real AWS): fetched
+  - **Book covers** (built, verified end-to-end against real AWS): fetched
     server-side from Open Library by ISBN at insert/ingest time (not
     client-uploaded), deduplicated by ISBN so a book owned by multiple users
     is stored once, resized via `sharp` into two variants (grid thumbnail, 3D
@@ -284,7 +284,9 @@ fetch directly):
   and cached in `book_covers` (keyed by ISBN) so a book added by multiple users
   is only fetched/resized/uploaded once. Falls back to linking Open Library
   directly on any fetch/resize failure, so adding a book never fails because
-  of the cover pipeline. Not yet run against real AWS — see "What's next".
+  of the cover pipeline. Verified end-to-end against real AWS, including the
+  3D detail view's canvas-based spine-color read from a CloudFront-served
+  texture (see `Book3D.tsx`).
 - **Spine color computed at ingest (future, not yet built):** When the backend
   ingests a book and fetches its cover, it will also compute the cover's dominant
   color and store it as a field on the book (e.g. `spineColor` on the `Book`
@@ -485,21 +487,11 @@ Do not pre-create empty folders for features that haven't started yet.
 
 In rough priority order:
 
-1. **Verify book-cover ingest end-to-end with real AWS** — `getOrIngestCover`
-   is code-complete and type-checked but has never actually run against real
-   AWS: add a book with a real ISBN and confirm the `covers/{isbn}/grid.webp`
-   + `covers/{isbn}/texture.webp` objects land in S3, `book_covers` gets the
-   row, and CloudFront serves both. Specifically worth checking: `Book3D.tsx`
-   reads the cover texture's pixels via canvas (`deriveSpineColor`), which
-   requires the image response to carry CORS headers — confirmed true for
-   `covers.openlibrary.org`, unconfirmed for CloudFront. If CloudFront doesn't
-   send `Access-Control-Allow-Origin`, that canvas read will throw for
-   S3-backed covers (see the comment in `Book3D.tsx`).
-2. **Deployment** — Vercel (frontend) + Railway or Render (Express). Env vars
+1. **Deployment** — Vercel (frontend) + Railway or Render (Express). Env vars
    to wire: `API_URL` (server-side) and `NEXT_PUBLIC_API_URL` (client-side)
    pointing at the deployed Express URL; `FRONTEND_ORIGIN` on Express pointing
    at the Vercel URL.
-3. **Spine color at ingest** — Move dominant-hue extraction server-side (via
+2. **Spine color at ingest** — Move dominant-hue extraction server-side (via
    `sharp`) and store it as a `spineColor` field on the book, so the frontend
    reads it from props instead of computing it client-side on every load. Now
    natural to build alongside `coverIngest.ts`, since that's already where the

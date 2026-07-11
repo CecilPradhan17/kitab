@@ -71,19 +71,25 @@ function isISODate(value: unknown): value is string {
 
 // POST /api/books — add a book to the authenticated user's library.
 //
-// Body: { title, author, isbn, dateStarted?, dateFinished?, quote? }. The client
-// sends the ISBN it picked from search; the server derives the cover URL from it
-// (single home for the Open Library URL scheme). There's no book_number to set —
+// Body: { title, author, isbn?, customBookId?, dateStarted?, dateFinished?, quote? }.
+// Exactly one of isbn (an Open Library book) or customBookId (a user-submitted
+// book from custom_books) must be present — it's how the client tells the
+// server which catalog this book came from. There's no book_number to set —
 // it's derived on read from ordering.
 booksRouter.post("/", requireAuth, async (req, res) => {
-  const { title, author, isbn, dateStarted, dateFinished, quote } = req.body ?? {};
+  const { title, author, isbn, customBookId, dateStarted, dateFinished, quote } = req.body ?? {};
 
   // Validate up front and reject with 400 before touching the DB. req.body is
   // untyped JSON, so every field is checked explicitly rather than trusted.
   const errors: string[] = [];
   if (typeof title !== "string" || title.trim() === "") errors.push("title is required");
   if (typeof author !== "string" || author.trim() === "") errors.push("author is required");
-  if (typeof isbn !== "string" || isbn.trim() === "") errors.push("isbn is required");
+
+  const hasIsbn = typeof isbn === "string" && isbn.trim() !== "";
+  const hasCustomBookId = typeof customBookId === "string" && customBookId.trim() !== "";
+  if (hasIsbn === hasCustomBookId) {
+    errors.push("exactly one of isbn or customBookId is required");
+  }
 
   // Dates are optional, but if present must be valid ISO dates and ordered.
   if (dateStarted != null && !isISODate(dateStarted)) errors.push("dateStarted must be YYYY-MM-DD");
@@ -98,15 +104,43 @@ booksRouter.post("/", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "Invalid book", details: errors });
   }
 
-  // Fetch (or reuse a previously cached) S3/CloudFront cover for this ISBN.
-  // Falls back to linking Open Library directly on any failure, so this never
-  // fails the add-book request.
-  const { coverUrl, textureUrl } = await getOrIngestCover(isbn.trim());
+  // What actually gets inserted. Starts from the client's title/author/isbn,
+  // but the customBookId branch below overwrites title/author/cover with the
+  // shared catalog entry's own values — never the client's — so every library
+  // row sourced from the same custom book stays identical to it everywhere.
+  let bookTitle = title.trim();
+  let bookAuthor = author.trim();
+  let bookIsbn: string | null = null;
+  let bookCustomBookId: string | null = null;
+  let coverUrl: string;
+  let textureUrl: string;
 
   try {
+    if (hasIsbn) {
+      bookIsbn = isbn.trim();
+      // Fetch (or reuse a previously cached) S3/CloudFront cover for this
+      // ISBN. Falls back to linking Open Library directly on any failure, so
+      // this never fails the add-book request.
+      ({ coverUrl, textureUrl } = await getOrIngestCover(bookIsbn));
+    } else {
+      bookCustomBookId = customBookId.trim();
+      const customBook = await pool.query<{ title: string; author: string; coverUrl: string; textureUrl: string }>(
+        `SELECT title, author, cover_url AS "coverUrl", texture_url AS "textureUrl"
+         FROM custom_books WHERE id = $1;`,
+        [bookCustomBookId]
+      );
+      if (customBook.rows.length === 0) {
+        return res.status(404).json({ error: "Custom book not found" });
+      }
+      bookTitle = customBook.rows[0].title;
+      bookAuthor = customBook.rows[0].author;
+      coverUrl = customBook.rows[0].coverUrl;
+      textureUrl = customBook.rows[0].textureUrl;
+    }
+
     const result = await pool.query<Book>(
-      `INSERT INTO books (title, author, isbn, cover_url, cover_texture_url, date_started, date_finished, quote, user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO books (title, author, isbn, custom_book_id, cover_url, cover_texture_url, date_started, date_finished, quote, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING id, title, author,
                  cover_url                              AS "coverUrl",
                  COALESCE(cover_texture_url, cover_url) AS "textureUrl",
@@ -114,9 +148,10 @@ booksRouter.post("/", requireAuth, async (req, res) => {
                  date_finished::text                    AS "dateFinished",
                  quote;`,
       [
-        title.trim(),
-        author.trim(),
-        isbn.trim(),
+        bookTitle,
+        bookAuthor,
+        bookIsbn,
+        bookCustomBookId,
         coverUrl,
         textureUrl,
         dateStarted ?? null,
@@ -128,6 +163,10 @@ booksRouter.post("/", requireAuth, async (req, res) => {
 
     res.status(201).json(result.rows[0]);
   } catch (err) {
+    // 22P02 = invalid text representation — a malformed (non-UUID) customBookId.
+    if (err instanceof Error && "code" in err && err.code === "22P02") {
+      return res.status(400).json({ error: "Invalid customBookId" });
+    }
     console.error("POST /api/books failed:", err);
     res.status(500).json({ error: "Failed to add book" });
   }

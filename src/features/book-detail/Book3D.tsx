@@ -27,11 +27,14 @@ export default function Book3D({ book }: Book3DProps) {
   // Suspends until the cover loads (caught by the <Suspense> in BookScene).
   // textureUrl is the larger S3/CloudFront variant made for close-up 3D use
   // (falls back to coverUrl for books added before that pipeline existed).
-  // Both covers.openlibrary.org and CloudFront serve CORS-clean images, so the
-  // texture stays canvas-readable for the pixel read below regardless of
-  // which source a given book's cover comes from. We tag it sRGB so the
-  // cover's colors aren't washed out, and bump anisotropy so it stays crisp
-  // at glancing angles.
+  // KNOWN ISSUE (as of 2026-07-11): CloudFront sends no CORS headers on any
+  // path, so the pixel read below (deriveSpineColor) throws for any
+  // CloudFront-served cover — S3-backed ISBN covers and all custom book
+  // covers. covers.openlibrary.org does send Access-Control-Allow-Origin: *,
+  // so only Open-Library-fallback covers work today. Needs a CloudFront
+  // Response Headers Policy (e.g. AWS-managed SimpleCORS) attached to the
+  // distribution. We tag it sRGB so the cover's colors aren't washed out,
+  // and bump anisotropy so it stays crisp at glancing angles.
   const cover = useTexture(book.textureUrl, (loaded) => {
     const texture = Array.isArray(loaded) ? loaded[0] : loaded;
     texture.colorSpace = THREE.SRGBColorSpace;

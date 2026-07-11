@@ -37,9 +37,15 @@ Avatar upload is verified end-to-end against real AWS, including the browser
 upload flow (the S3 bucket needed a CORS configuration allowing the presigned
 PUT from the frontend origin — curl-testing the endpoints alone hadn't caught
 this, since curl doesn't exercise CORS preflight). Book-cover ingest
-(`getOrIngestCover`, wired into `POST /api/books`) is also now verified
-end-to-end against real AWS. Next milestone is deployment (Vercel +
-Railway/Render).
+(`getOrIngestCover`, wired into `POST /api/books`) had a bug (fixed) that made
+`book_covers` silently empty this whole time — see "Image storage & CDN"
+below. CloudFront currently sends no CORS headers on any path, which breaks
+loading any CloudFront-served image (cover or avatar) into a WebGL texture —
+open issue, fix in progress. A new feature, user-submitted "custom books"
+shared across all users (schema, upload pipeline, search merge, and the
+add-book UI), is what surfaced this: custom book covers have no Open-Library
+fallback to mask it the way ISBN covers accidentally did. Next milestone is
+resolving the CloudFront CORS gap, then deployment (Vercel + Railway/Render).
 
 ## Backend decisions (locked in, with reasoning)
 
@@ -139,13 +145,14 @@ Railway/Render).
     The confirm endpoint also rejects any key not prefixed with the
     requesting user's own `avatars/raw/{userId}/` namespace — otherwise a
     client could hand the server another user's raw upload key.
-  - **Book covers** (built, verified end-to-end against real AWS): fetched
-    server-side from Open Library by ISBN at insert/ingest time (not
-    client-uploaded), deduplicated by ISBN so a book owned by multiple users
-    is stored once, resized via `sharp` into two variants (grid thumbnail, 3D
-    texture res), uploaded to S3, and the resulting URLs stored on the book
-    row instead of linking Open Library directly. Falls back to linking Open
-    Library directly on ingest failure — see `coverUrl`/`textureUrl` notes
+  - **Book covers** (built; fetch/ingest bug fixed 2026-07-11, CloudFront CORS
+    still open — see "Current phase"): fetched server-side from Open Library
+    by ISBN at insert/ingest time (not client-uploaded), deduplicated by ISBN
+    so a book owned by multiple users is stored once, resized via `sharp`
+    into two variants (grid thumbnail, 3D texture res), uploaded to S3, and
+    the resulting URLs stored on the book row instead of linking Open Library
+    directly. Falls back to linking Open Library directly on ingest failure —
+    see `coverUrl`/`textureUrl` notes
     in "Data layer" below.
 - **IAM scoping:** Express's S3 credentials are scoped to
   `PutObject`/`GetObject` on this bucket only — never root/account-wide
@@ -284,9 +291,15 @@ fetch directly):
   and cached in `book_covers` (keyed by ISBN) so a book added by multiple users
   is only fetched/resized/uploaded once. Falls back to linking Open Library
   directly on any fetch/resize failure, so adding a book never fails because
-  of the cover pipeline. Verified end-to-end against real AWS, including the
-  3D detail view's canvas-based spine-color read from a CloudFront-served
-  texture (see `Book3D.tsx`).
+  of the cover pipeline. Had a bug (fixed 2026-07-11) where it fell back on
+  every single ISBN because Open Library's HTTP/2 responses never send a
+  `content-length` header, and the size check relied on that header instead
+  of the actual downloaded bytes — `book_covers` was empty this whole time.
+  Now confirmed landing real S3 objects, but the 3D detail view's canvas-based
+  spine-color read (`Book3D.tsx`, `deriveSpineColor`) still fails on them:
+  CloudFront sends no CORS headers on any path. Open issue — needs a
+  CloudFront Response Headers Policy (e.g. the AWS-managed `SimpleCORS`
+  policy) attached to the distribution's default behavior.
 - **Spine color computed at ingest (future, not yet built):** When the backend
   ingests a book and fetches its cover, it will also compute the cover's dominant
   color and store it as a field on the book (e.g. `spineColor` on the `Book`

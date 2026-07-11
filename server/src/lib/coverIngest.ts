@@ -1,12 +1,7 @@
-import sharp from "sharp";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { pool } from "../db";
 import { s3, S3_BUCKET_NAME, CLOUDFRONT_DOMAIN } from "./s3";
-
-// Small variant for the library grid card; larger variant for the 3D detail
-// render and story export card, which both show the cover close-up/full-bleed.
-const GRID_SIZE = { width: 500, height: 750 };
-const TEXTURE_SIZE = { width: 1000, height: 1500 };
+import { resizeCoverVariants } from "./coverResize";
 
 // Guards against a corrupt/runaway upstream response before it reaches sharp.
 const MAX_SOURCE_BYTES = 15 * 1024 * 1024; // 15MB
@@ -53,17 +48,7 @@ export async function getOrIngestCover(isbn: string): Promise<CoverUrls> {
     }
 
     const raw = Buffer.from(await response.arrayBuffer());
-
-    const [gridBuffer, textureBuffer] = await Promise.all([
-      sharp(raw)
-        .resize(GRID_SIZE.width, GRID_SIZE.height, { fit: "cover", withoutEnlargement: true })
-        .webp({ quality: 85 })
-        .toBuffer(),
-      sharp(raw)
-        .resize(TEXTURE_SIZE.width, TEXTURE_SIZE.height, { fit: "cover", withoutEnlargement: true })
-        .webp({ quality: 85 })
-        .toBuffer(),
-    ]);
+    const { gridBuffer, textureBuffer } = await resizeCoverVariants(raw);
 
     // Deterministic, ISBN-keyed keys (not a random id like avatars use) — the
     // point of this cache is exactly one object per ISBN, so re-ingesting the

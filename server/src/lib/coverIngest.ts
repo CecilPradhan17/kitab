@@ -3,11 +3,13 @@ import { pool } from "../db";
 import { s3, S3_BUCKET_NAME, CLOUDFRONT_DOMAIN } from "./s3";
 import { resizeCoverVariants } from "./coverResize";
 
-// Guards against a corrupt/runaway upstream response before it reaches sharp.
+// Guards against a corrupt/runaway upstream response before it reaches sharp,
+// and against Open Library's placeholder image (it answers a missing cover
+// with a 200 and a tiny image rather than a 404). Checked against the actual
+// downloaded byte count, not the content-length header — Open Library serves
+// over HTTP/2 without ever sending that header, so relying on it meant this
+// check misfired as "no cover" on every real cover too.
 const MAX_SOURCE_BYTES = 15 * 1024 * 1024; // 15MB
-// Open Library sometimes answers a missing cover with a 200 and a tiny
-// placeholder image rather than a 404 — a suspiciously small payload is
-// treated the same as "no cover" rather than fed into sharp.
 const MIN_SOURCE_BYTES = 1000;
 
 interface CoverUrls {
@@ -42,12 +44,15 @@ export async function getOrIngestCover(isbn: string): Promise<CoverUrls> {
       headers: { "User-Agent": "Kitab/0.1 (book portfolio project)" },
     });
 
-    const contentLength = Number(response.headers.get("content-length") ?? "0");
-    if (!response.ok || contentLength < MIN_SOURCE_BYTES || contentLength > MAX_SOURCE_BYTES) {
-      throw new Error(`No usable cover for ISBN ${isbn} (status ${response.status}, length ${contentLength})`);
+    if (!response.ok) {
+      throw new Error(`No usable cover for ISBN ${isbn} (status ${response.status})`);
     }
 
     const raw = Buffer.from(await response.arrayBuffer());
+    if (raw.length < MIN_SOURCE_BYTES || raw.length > MAX_SOURCE_BYTES) {
+      throw new Error(`No usable cover for ISBN ${isbn} (downloaded ${raw.length} bytes)`);
+    }
+
     const { gridBuffer, textureBuffer } = await resizeCoverVariants(raw);
 
     // Deterministic, ISBN-keyed keys (not a random id like avatars use) — the

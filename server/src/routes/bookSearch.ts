@@ -1,16 +1,15 @@
 import { Router } from "express";
+import { pool } from "../db";
 
 /**
  * A single book-search result, trimmed to exactly what the add-book picker
- * needs. This is NOT the full Open Library document (which carries dozens of
- * fields) — the server shapes it down so the client gets a clean, minimal list.
+ * needs. `source` tells the client (and POST /api/books) which catalog it
+ * came from and which identifier to send back: `isbn` for an Open Library
+ * result, `customBookId` for a user-submitted one.
  */
-export interface BookSearchResult {
-  title: string;
-  author: string;
-  isbn: string;
-  coverUrl: string;
-}
+export type BookSearchResult =
+  | { source: "openlibrary"; title: string; author: string; isbn: string; coverUrl: string }
+  | { source: "custom"; title: string; author: string; customBookId: string; coverUrl: string };
 
 /**
  * The handful of fields we read off an Open Library search document. Everything
@@ -29,11 +28,83 @@ const OPEN_LIBRARY_SEARCH = "https://openlibrary.org/search.json";
 // what we'll likely show, since some docs get dropped in shaping (no ISBN, etc.).
 const SEARCH_LIMIT = 20;
 
+// Custom books are shown first and are meant to be a short, high-signal list
+// (community contributions), not a second full catalog — capped well below
+// the Open Library limit.
+const CUSTOM_SEARCH_LIMIT = 5;
+
 export const bookSearchRouter = Router();
 
-// GET /api/book-search?q=... — proxy Open Library's search, returning a clean
-// candidate list for the add-book picker. This is catalog discovery (find a real
-// book to add), NOT searching the user's own library.
+// Simple substring match on title/author — no full-text search/ranking setup
+// in this project (see CLAUDE.md's raw-SQL, no-ORM philosophy). Fine at the
+// scale of a "community additions" table.
+async function searchCustomBooks(q: string): Promise<BookSearchResult[]> {
+  const result = await pool.query<{ id: string; title: string; author: string; coverUrl: string }>(
+    `SELECT id, title, author, cover_url AS "coverUrl"
+     FROM custom_books
+     WHERE title ILIKE $1 OR author ILIKE $1
+     ORDER BY title
+     LIMIT $2;`,
+    [`%${q}%`, CUSTOM_SEARCH_LIMIT]
+  );
+
+  return result.rows.map((row) => ({
+    source: "custom" as const,
+    title: row.title,
+    author: row.author,
+    customBookId: row.id,
+    coverUrl: row.coverUrl,
+  }));
+}
+
+async function searchOpenLibrary(q: string): Promise<BookSearchResult[]> {
+  const url = new URL(OPEN_LIBRARY_SEARCH);
+  url.searchParams.set("q", q);
+  url.searchParams.set("fields", "title,author_name,isbn");
+  url.searchParams.set("limit", String(SEARCH_LIMIT));
+
+  const response = await fetch(url, {
+    // Open Library asks API clients to identify themselves with a User-Agent.
+    headers: { "User-Agent": "Kitab/0.1 (book portfolio project)" },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Open Library search failed: ${response.status} ${response.statusText}`);
+  }
+
+  const data = (await response.json()) as { docs?: OpenLibraryDoc[] };
+  const docs = data.docs ?? [];
+
+  // Shape each doc to what the picker needs, dropping anything missing the
+  // essentials: a title, an author, and at least one ISBN. No ISBN means no
+  // reliable cover and nothing to POST, so such results aren't addable.
+  const results: BookSearchResult[] = [];
+  for (const doc of docs) {
+    const isbn = doc.isbn?.[0];
+    const author = doc.author_name?.[0];
+    if (!doc.title || !author || !isbn) continue;
+
+    results.push({
+      source: "openlibrary",
+      title: doc.title,
+      author,
+      isbn,
+      coverUrl: `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`,
+    });
+  }
+
+  return results;
+}
+
+// GET /api/book-search?q=... — candidate list for the add-book picker: custom
+// (community-submitted) books first, then Open Library results. This is
+// catalog discovery (find a real book to add), NOT searching the user's own
+// library.
+//
+// The two sources are queried independently and each failure is contained —
+// an Open Library outage shouldn't hide our own custom books, and vice versa.
+// The endpoint only fails outright if something goes wrong before either
+// lookup even starts.
 bookSearchRouter.get("/", async (req, res) => {
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
 
@@ -41,48 +112,19 @@ bookSearchRouter.get("/", async (req, res) => {
     return res.status(400).json({ error: "Query parameter q is required" });
   }
 
-  // Request only the fields we use and cap the count — keeps the upstream
-  // payload small before we shape it further.
-  const url = new URL(OPEN_LIBRARY_SEARCH);
-  url.searchParams.set("q", q);
-  url.searchParams.set("fields", "title,author_name,isbn");
-  url.searchParams.set("limit", String(SEARCH_LIMIT));
-
+  let customResults: BookSearchResult[] = [];
   try {
-    const response = await fetch(url, {
-      // Open Library asks API clients to identify themselves with a User-Agent.
-      headers: { "User-Agent": "Kitab/0.1 (book portfolio project)" },
-    });
-
-    if (!response.ok) {
-      console.error("Open Library search failed:", response.status, response.statusText);
-      // 502: the failure is upstream, not in this request.
-      return res.status(502).json({ error: "Book search is unavailable" });
-    }
-
-    const data = (await response.json()) as { docs?: OpenLibraryDoc[] };
-    const docs = data.docs ?? [];
-
-    // Shape each doc to what the picker needs, dropping anything missing the
-    // essentials: a title, an author, and at least one ISBN. No ISBN means no
-    // reliable cover and nothing to POST, so such results aren't addable.
-    const results: BookSearchResult[] = [];
-    for (const doc of docs) {
-      const isbn = doc.isbn?.[0];
-      const author = doc.author_name?.[0];
-      if (!doc.title || !author || !isbn) continue;
-
-      results.push({
-        title: doc.title,
-        author,
-        isbn,
-        coverUrl: `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`,
-      });
-    }
-
-    res.json(results);
+    customResults = await searchCustomBooks(q);
   } catch (err) {
-    console.error("GET /api/book-search failed:", err);
-    res.status(502).json({ error: "Book search is unavailable" });
+    console.error("GET /api/book-search: custom book search failed:", err);
   }
+
+  let openLibraryResults: BookSearchResult[] = [];
+  try {
+    openLibraryResults = await searchOpenLibrary(q);
+  } catch (err) {
+    console.error("GET /api/book-search: Open Library search failed:", err);
+  }
+
+  res.json([...customResults, ...openLibraryResults]);
 });

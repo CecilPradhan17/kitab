@@ -7,6 +7,7 @@ import { pool } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { s3, S3_BUCKET_NAME, CLOUDFRONT_DOMAIN } from "../lib/s3";
 import { resizeCoverVariants } from "../lib/coverResize";
+import { extractRawSpineColor } from "../lib/spineColor";
 
 export const customBooksRouter = Router();
 
@@ -33,6 +34,7 @@ interface CustomBook {
   author: string;
   coverUrl: string;
   textureUrl: string;
+  spineColor: string | null;
 }
 
 // POST /api/custom-books/cover — issues a short-lived presigned S3 PUT URL so
@@ -113,10 +115,15 @@ customBooksRouter.post("/", requireAuth, async (req, res) => {
 
   let gridBuffer: Buffer;
   let textureBuffer: Buffer;
+  let spineColor: string | null;
   try {
     const raw = await s3.send(new GetObjectCommand({ Bucket: S3_BUCKET_NAME, Key: key! }));
     const rawBytes = await raw.Body!.transformToByteArray();
-    ({ gridBuffer, textureBuffer } = await resizeCoverVariants(Buffer.from(rawBytes)));
+    const rawBuffer = Buffer.from(rawBytes);
+    [{ gridBuffer, textureBuffer }, spineColor] = await Promise.all([
+      resizeCoverVariants(rawBuffer),
+      extractRawSpineColor(rawBuffer),
+    ]);
   } catch (err) {
     console.error("POST /api/custom-books: failed to fetch/resize upload:", err);
     res.status(400).json({ error: "Could not find or process the uploaded file" });
@@ -149,17 +156,19 @@ customBooksRouter.post("/", requireAuth, async (req, res) => {
 
   try {
     const result = await pool.query<CustomBook>(
-      `INSERT INTO custom_books (id, title, author, cover_url, texture_url, created_by)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO custom_books (id, title, author, cover_url, texture_url, spine_color, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, title, author,
                  cover_url   AS "coverUrl",
-                 texture_url AS "textureUrl";`,
+                 texture_url AS "textureUrl",
+                 spine_color AS "spineColor";`,
       [
         bookId,
         title!.trim(),
         author!.trim(),
         `https://${CLOUDFRONT_DOMAIN}/${gridKey}`,
         `https://${CLOUDFRONT_DOMAIN}/${textureKey}`,
+        spineColor,
         req.user!.userId,
       ]
     );

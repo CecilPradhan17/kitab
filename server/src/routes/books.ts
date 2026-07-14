@@ -19,6 +19,10 @@ export interface Book {
   // added before the cover-ingest pipeline existed have no stored
   // cover_texture_url, so the SQL layer falls back to coverUrl for them.
   textureUrl: string;
+  // Raw dominant color, re-lit into the final spine tint on the frontend
+  // (src/lib/coverColor.ts). Null for books added before this existed, or
+  // where extraction found nothing to sample.
+  spineColor: string | null;
   dateStarted: string;
   dateFinished: string;
   quote: string;
@@ -43,6 +47,7 @@ booksRouter.get("/", requireAuth, async (req, res) => {
       `SELECT id, title, author,
               cover_url                              AS "coverUrl",
               COALESCE(cover_texture_url, cover_url) AS "textureUrl",
+              spine_color                            AS "spineColor",
               date_started::text                     AS "dateStarted",
               date_finished::text                    AS "dateFinished",
               quote
@@ -114,6 +119,7 @@ booksRouter.post("/", requireAuth, async (req, res) => {
   let bookCustomBookId: string | null = null;
   let coverUrl: string;
   let textureUrl: string;
+  let spineColor: string | null;
 
   try {
     if (hasIsbn) {
@@ -121,11 +127,11 @@ booksRouter.post("/", requireAuth, async (req, res) => {
       // Fetch (or reuse a previously cached) S3/CloudFront cover for this
       // ISBN. Falls back to linking Open Library directly on any failure, so
       // this never fails the add-book request.
-      ({ coverUrl, textureUrl } = await getOrIngestCover(bookIsbn));
+      ({ coverUrl, textureUrl, spineColor } = await getOrIngestCover(bookIsbn));
     } else {
       bookCustomBookId = customBookId.trim();
-      const customBook = await pool.query<{ title: string; author: string; coverUrl: string; textureUrl: string }>(
-        `SELECT title, author, cover_url AS "coverUrl", texture_url AS "textureUrl"
+      const customBook = await pool.query<{ title: string; author: string; coverUrl: string; textureUrl: string; spineColor: string | null }>(
+        `SELECT title, author, cover_url AS "coverUrl", texture_url AS "textureUrl", spine_color AS "spineColor"
          FROM custom_books WHERE id = $1;`,
         [bookCustomBookId]
       );
@@ -136,14 +142,16 @@ booksRouter.post("/", requireAuth, async (req, res) => {
       bookAuthor = customBook.rows[0].author;
       coverUrl = customBook.rows[0].coverUrl;
       textureUrl = customBook.rows[0].textureUrl;
+      spineColor = customBook.rows[0].spineColor;
     }
 
     const result = await pool.query<Book>(
-      `INSERT INTO books (title, author, isbn, custom_book_id, cover_url, cover_texture_url, date_started, date_finished, quote, user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO books (title, author, isbn, custom_book_id, cover_url, cover_texture_url, spine_color, date_started, date_finished, quote, user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING id, title, author,
                  cover_url                              AS "coverUrl",
                  COALESCE(cover_texture_url, cover_url) AS "textureUrl",
+                 spine_color                            AS "spineColor",
                  date_started::text                     AS "dateStarted",
                  date_finished::text                    AS "dateFinished",
                  quote;`,
@@ -154,6 +162,7 @@ booksRouter.post("/", requireAuth, async (req, res) => {
         bookCustomBookId,
         coverUrl,
         textureUrl,
+        spineColor,
         dateStarted ?? null,
         dateFinished ?? null,
         quote ?? null,
@@ -193,6 +202,7 @@ booksRouter.patch("/:id", requireAuth, async (req, res) => {
        RETURNING id, title, author,
                  cover_url                              AS "coverUrl",
                  COALESCE(cover_texture_url, cover_url) AS "textureUrl",
+                 spine_color                            AS "spineColor",
                  date_started::text                     AS "dateStarted",
                  date_finished::text                    AS "dateFinished",
                  quote;`,

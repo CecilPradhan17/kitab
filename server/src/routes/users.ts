@@ -71,6 +71,7 @@ usersRouter.get("/:username/books", async (req, res) => {
       `SELECT b.id, b.title, b.author,
               b.cover_url                                AS "coverUrl",
               COALESCE(b.cover_texture_url, b.cover_url) AS "textureUrl",
+              b.spine_color                               AS "spineColor",
               b.date_started::text                       AS "dateStarted",
               b.date_finished::text                      AS "dateFinished",
               b.quote

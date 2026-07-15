@@ -5,6 +5,8 @@ import type { Profile } from "./types";
 import { updateProfile } from "./profileApi";
 import { getStoredToken } from "@/lib/auth";
 
+const MAX_BIO_LENGTH = 280; // mirrors server/db/08_bio_length_constraint.sql
+
 interface EditProfileModalProps {
   /** The profile to edit, or null when the modal is closed — same pattern as
       BookDetailModal: no separate boolean, no way to be "open" with nothing to edit. */
@@ -118,15 +120,21 @@ export default function EditProfileModal({
           </div>
 
           <div className="flex flex-col gap-2">
-            <label
-              htmlFor="bio"
-              className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted"
-            >
-              Bio
-            </label>
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="bio"
+                className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted"
+              >
+                Bio
+              </label>
+              <span className="font-sans text-[0.6rem] tracking-[0.1em] text-muted">
+                {bio.length}/{MAX_BIO_LENGTH}
+              </span>
+            </div>
             <textarea
               id="bio"
               rows={3}
+              maxLength={MAX_BIO_LENGTH}
               value={bio}
               onChange={(event) => setBio(event.target.value)}
               placeholder="Tell people what you're reading"

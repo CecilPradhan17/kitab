@@ -37,15 +37,26 @@ Avatar upload is verified end-to-end against real AWS, including the browser
 upload flow (the S3 bucket needed a CORS configuration allowing the presigned
 PUT from the frontend origin — curl-testing the endpoints alone hadn't caught
 this, since curl doesn't exercise CORS preflight). Book-cover ingest
-(`getOrIngestCover`, wired into `POST /api/books`) had a bug (fixed) that made
-`book_covers` silently empty this whole time — see "Image storage & CDN"
-below. CloudFront currently sends no CORS headers on any path, which breaks
-loading any CloudFront-served image (cover or avatar) into a WebGL texture —
-open issue, fix in progress. A new feature, user-submitted "custom books"
-shared across all users (schema, upload pipeline, search merge, and the
-add-book UI), is what surfaced this: custom book covers have no Open-Library
-fallback to mask it the way ISBN covers accidentally did. Next milestone is
-resolving the CloudFront CORS gap, then deployment (Vercel + Railway/Render).
+(`getOrIngestCover`, wired into `POST /api/books`) had a bug (fixed 2026-07-11)
+that made `book_covers` silently empty this whole time — see "Image storage &
+CDN" below. A new feature, user-submitted "custom books" shared across all
+users (schema, upload pipeline, search merge, and the add-book UI), then
+surfaced a much harder problem: WebGL texture loads (the live 3D detail view
+and the story-export renderer) require `crossOrigin`, which makes every cover
+load a cross-site CORS-mode request to CloudFront whenever `textureUrl` isn't
+an Open-Library fallback. That request pattern proved unreliable in the
+browser in ways that were never fully root-caused despite CloudFront's config
+checking out correctly (CORS headers present, correct, singular) at every
+layer tested via curl — spanning a CloudFront response-headers policy fix, a
+suspected-then-ruled-out ad-blocker, suspected-then-ruled-out browser/CDN
+cache poisoning, and other dead ends over several days (2026-07-11 to 07-16).
+Resolved 2026-07-16 not by continuing to chase the exact cause, but by
+eliminating the cross-origin request entirely: `next.config.ts` proxies
+CloudFront through this app's own origin (`/media/*`), and `src/lib/mediaUrl.ts`
+rewrites CloudFront URLs to that same-origin path before any texture load —
+see "Image storage & CDN" and Book3D.tsx's comment for the full reasoning.
+Requires `NEXT_PUBLIC_CLOUDFRONT_DOMAIN` in `.env.local` (frontend), no
+hardcoded fallback. Next milestone is deployment (Vercel + Railway/Render).
 
 ## Backend decisions (locked in, with reasoning)
 
@@ -145,9 +156,10 @@ resolving the CloudFront CORS gap, then deployment (Vercel + Railway/Render).
     The confirm endpoint also rejects any key not prefixed with the
     requesting user's own `avatars/raw/{userId}/` namespace — otherwise a
     client could hand the server another user's raw upload key.
-  - **Book covers** (built; fetch/ingest bug fixed 2026-07-11, CloudFront CORS
-    still open — see "Current phase"): fetched server-side from Open Library
-    by ISBN at insert/ingest time (not client-uploaded), deduplicated by ISBN
+  - **Book covers** (built; fetch/ingest bug fixed 2026-07-11, WebGL loading
+    fixed via same-origin proxy 2026-07-16 — see "Current phase"): fetched
+    server-side from Open Library by ISBN at insert/ingest time (not
+    client-uploaded), deduplicated by ISBN
     so a book owned by multiple users is stored once, resized via `sharp`
     into two variants (grid thumbnail, 3D texture res), uploaded to S3, and
     the resulting URLs stored on the book row instead of linking Open Library
@@ -210,6 +222,7 @@ type Book = {
   author: string;
   coverUrl: string;
   textureUrl: string; // larger variant for the 3D render; falls back to coverUrl for pre-ingest-pipeline rows
+  spineColor: string | null; // raw dominant color computed at ingest; re-lit into the final tint by relightSpineColor
   dateStarted: string;
   dateFinished: string;
   bookNumber: number; // derived in getBooks (by date_finished order), not stored/returned by the API
@@ -228,10 +241,15 @@ URL. `book_covers` is the ISBN-keyed cache; `books.cover_url` /
 - `POST /api/auth/register` / `POST /api/auth/login` — returns `{ token, user }`
 - `GET /api/books` — the authenticated user's library (auth-gated, scoped to
   `req.user.userId`), ordered by `date_finished, created_at, id`
-- `POST /api/books` — add a book; body: `{ title, author, isbn, dateStarted?, dateFinished?, quote? }` (auth-gated)
+- `POST /api/books` — add a book; body: `{ title, author, isbn?, customBookId?, dateStarted?, dateFinished?, quote? }`,
+  exactly one of `isbn`/`customBookId` required (auth-gated)
 - `PATCH /api/books/:id` — update quote only; body: `{ quote }` (auth-gated)
 - `DELETE /api/books/:id` — remove a book (auth-gated)
-- `GET /api/book-search?q=` — proxies Open Library search, returns `{ title, author, isbn, coverUrl }[]`
+- `GET /api/book-search?q=` — merges `custom_books` (ILIKE, capped at 5, listed first) with the Open
+  Library proxy; returns `{ source: "openlibrary", title, author, isbn, coverUrl }[] | { source: "custom", title, author, customBookId, coverUrl }[]`
+- `POST /api/custom-books/cover` — issues a presigned S3 upload URL for a candidate custom-book cover (auth-gated, rate-limited)
+- `POST /api/custom-books` — confirms the upload, resizes + extracts spine color, creates the shared catalog entry;
+  body: `{ title, author, key }` (auth-gated); no PATCH/DELETE — immutable once created
 - `GET /api/users/:username` — public profile (404 if unknown)
 - `GET /api/users/:username/books` — public library for a username, no auth
 - `PATCH /api/users/me` — update `displayName`/`bio` (auth-gated)
@@ -277,14 +295,26 @@ fetch directly):
 - **3D book model:** One reusable mesh/geometry for all books ("cookie cutter"
   approach). Only the cover texture changes per book. Do not generate unique
   geometry per book.
-- **3D book spine/back color:** The spine and back faces are tinted from the
-  cover's dominant hue (not a flat average, which comes out muddy gray), then
-  re-lit to a fixed dark, rich value so they read as the book's edges rather
-  than competing with the cover face. Grayscale covers fall back to a darkened
-  average; a failed read falls back to the dark default. Currently computed
-  client-side from the loaded cover texture (canvas downscale → dominant-hue
-  vote → re-light). Moving this to ingest-time is a future milestone — see
-  spine color note below.
+- **3D book spine/back color (built):** The spine and back faces are tinted
+  from the cover's dominant hue (not a flat average, which comes out muddy
+  gray), then re-lit to a fixed dark, rich value so they read as the book's
+  edges rather than competing with the cover face. Grayscale covers fall back
+  to a darkened average; a missing color falls back to the dark default.
+  Computed server-side at ingest time (`server/src/lib/spineColor.ts`, via
+  `sharp` — Node has no DOM canvas), stored as the raw dominant color (not the
+  already-re-lit spine color, so dark/vivid styling can be tuned on the
+  frontend without re-ingesting every book) on `book_covers`, `custom_books`,
+  and `books` (mirroring `cover_url`/`texture_url`'s caching pattern — see
+  "Data layer"). The frontend (`src/lib/coverColor.ts`'s `relightSpineColor`)
+  just re-lights that stored value — pure color math, no image access needed.
+  This replaced an earlier client-side canvas-read implementation
+  (`deriveSpineColor`), motivated initially by an ad-blocker/CORS problem (see
+  "Image sourcing" below) — moving the *extraction* server-side didn't fully
+  solve that problem on its own, since displaying the texture at all still
+  needs `crossOrigin`, but it's a real improvement kept regardless: no async
+  pixel-read, identical color between the live 3D view and the story-export
+  render, and the dominant-hue algorithm only needs to live in one place
+  conceptually (ported 1:1 from canvas to `sharp`, same tuning constants).
 - **Image sourcing (built):** Cover images are fetched once per unique ISBN at
   ingest time (`server/src/lib/coverIngest.ts`, called from `POST /api/books`),
   resized via `sharp` into two variants (500×750 grid, 1000×1500 3D texture),
@@ -295,19 +325,27 @@ fetch directly):
   every single ISBN because Open Library's HTTP/2 responses never send a
   `content-length` header, and the size check relied on that header instead
   of the actual downloaded bytes — `book_covers` was empty this whole time.
-  Now confirmed landing real S3 objects, but the 3D detail view's canvas-based
-  spine-color read (`Book3D.tsx`, `deriveSpineColor`) still fails on them:
-  CloudFront sends no CORS headers on any path. Open issue — needs a
-  CloudFront Response Headers Policy (e.g. the AWS-managed `SimpleCORS`
-  policy) attached to the distribution's default behavior.
-- **Spine color computed at ingest (future, not yet built):** When the backend
-  ingests a book and fetches its cover, it will also compute the cover's dominant
-  color and store it as a field on the book (e.g. `spineColor` on the `Book`
-  type). The frontend then reads this via props and drops the client-side
-  extraction entirely. Store the raw dominant hue, not the already-re-lit spine
-  color, so dark/vivid styling can be tuned on the frontend without re-ingesting
-  every book. Server-side the algorithm uses `sharp` (Node has no DOM canvas);
-  the approach (downscale → dominant hue) carries over. Future phase only.
+  A second, harder problem surfaced once real CloudFront-hosted covers
+  existed: WebGL requires `crossOrigin` to display *any* cross-origin texture
+  at all (`texImage2D` throws `SecurityError` and refuses the upload
+  without it — unlike canvas 2D, which tolerates a tainted source for
+  drawing and only blocks pixel-reads), which makes every 3D cover load a
+  cross-site CORS-mode request. That request pattern proved unreliable in
+  the browser in ways never fully root-caused despite CloudFront's config
+  checking out correctly at every layer tested via curl (CORS headers
+  present, correct, singular) — several dead-end theories were chased in
+  turn (a missing CloudFront response-headers policy, an ad-blocker,
+  CDN/browser cache poisoning) over 2026-07-11 to 07-16. **Resolved by
+  eliminating the cross-origin request entirely**, not by continuing to
+  chase the exact cause: `next.config.ts` proxies CloudFront through this
+  app's own origin (`/media/*`), and `src/lib/mediaUrl.ts` rewrites
+  CloudFront-hosted URLs to that same-origin path before any WebGL texture
+  load (`Book3D.tsx`, `renderBook.ts`). A same-origin request is never
+  subject to CORS, so this closes the entire class of problem — including
+  the original "some users have ad-blockers" concern — rather than
+  depending on CloudFront/browser CORS behavior being correct. Requires
+  `NEXT_PUBLIC_CLOUDFRONT_DOMAIN` set in the frontend's `.env.local` (no
+  hardcoded fallback — see `next.config.ts`'s comment for why).
 
 ## Story export feature spec (src/features/story-export)
 
@@ -421,7 +459,8 @@ src/
       types.ts
   /lib
     auth.ts                  ← localStorage token/user helpers
-    coverColor.ts             ← dominant-hue extraction for 3D spine tint
+    coverColor.ts             ← relightSpineColor: pure color math on the server-computed raw spine color
+    mediaUrl.ts                ← toMediaUrl: rewrites CloudFront URLs to the same-origin /media proxy
 server/
   /src
     app.ts                   ← Express app factory
@@ -431,6 +470,8 @@ server/
       jwt.ts                  ← sign/verify JWT
       s3.ts                   ← S3Client + bucket/CloudFront constants
       coverIngest.ts           ← getOrIngestCover: fetch/resize/upload/dedupe covers by ISBN
+      coverResize.ts            ← resizeCoverVariants: shared sharp resize, used by coverIngest + customBooks
+      spineColor.ts            ← extractRawSpineColor: sharp-based dominant-hue extraction at ingest
     /middleware
       requireAuth.ts          ← reads Bearer token, attaches req.user
     /types
@@ -438,14 +479,17 @@ server/
     /routes
       auth.ts                  ← POST /register, POST /login
       books.ts                 ← auth-gated, scoped to req.user
-      bookSearch.ts             ← GET ?q= (Open Library proxy)
+      bookSearch.ts             ← GET ?q= (Open Library proxy + custom_books, merged)
       users.ts                  ← profile reads (public) + profile/avatar writes (auth-gated)
+      customBooks.ts             ← presigned cover upload + create for user-submitted books
   /db
     01_schema.sql
     02_seed.sql
     03_users.sql              ← users table + user_id FK on books
     04_dev_seed.sql           ← dev user cecildev
     05_book_covers.sql         ← book_covers cache table + books.cover_texture_url
+    06_custom_books.sql         ← custom_books table + books.custom_book_id
+    07_spine_color.sql          ← spine_color on book_covers, custom_books, books
   docker-compose.yml
 ```
 

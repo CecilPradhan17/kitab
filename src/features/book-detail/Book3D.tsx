@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import * as THREE from "three";
 import { useTexture } from "@react-three/drei";
 import type { Book } from "@/features/library/mockBooks";
-import { deriveSpineColor, FALLBACK_SPINE_COLOR } from "@/lib/coverColor";
+import { relightSpineColor } from "@/lib/coverColor";
+import { toMediaUrl } from "@/lib/mediaUrl";
 
 // One geometry, reused for every book — only the cover texture changes (the
 // "cookie-cutter" approach from CLAUDE.md). Dimensions are a 2:3 cover ratio
@@ -21,27 +21,33 @@ interface Book3DProps {
 }
 
 export default function Book3D({ book }: Book3DProps) {
-  // Recolored from the cover once it loads; dark until then.
-  const [spineColor, setSpineColor] = useState(FALLBACK_SPINE_COLOR);
+  // book.spineColor is the raw dominant color computed server-side at
+  // ingest (server/src/lib/spineColor.ts) — re-lighting it into the final
+  // spine/back tint is now just synchronous color math, no async
+  // extraction/canvas-pixel-read needed once the texture itself loads.
+  const spineColor = relightSpineColor(book.spineColor);
 
   // Suspends until the cover loads (caught by the <Suspense> in BookScene).
   // textureUrl is the larger S3/CloudFront variant made for close-up 3D use
   // (falls back to coverUrl for books added before that pipeline existed).
-  // KNOWN ISSUE (as of 2026-07-11): CloudFront sends no CORS headers on any
-  // path, so the pixel read below (deriveSpineColor) throws for any
-  // CloudFront-served cover — S3-backed ISBN covers and all custom book
-  // covers. covers.openlibrary.org does send Access-Control-Allow-Origin: *,
-  // so only Open-Library-fallback covers work today. Needs a CloudFront
-  // Response Headers Policy (e.g. AWS-managed SimpleCORS) attached to the
-  // distribution. We tag it sRGB so the cover's colors aren't washed out,
-  // and bump anisotropy so it stays crisp at glancing angles.
-  const cover = useTexture(book.textureUrl, (loaded) => {
+  //
+  // crossOrigin is REQUIRED for WebGL to display a cross-origin texture at
+  // all (texImage2D/texSubImage2D throws SecurityError and refuses the
+  // upload outright without it — unlike canvas 2D's drawImage, which
+  // succeeds on a tainted source and only blocks later pixel-reads). That
+  // makes this a cross-site CORS-mode request whenever textureUrl points at
+  // CloudFront, which turned out to be unreliable in ways that were never
+  // fully root-caused despite CloudFront's config checking out correctly at
+  // every layer tested (see git history around 2026-07-11 to 07-16).
+  // toMediaUrl() sidesteps the whole problem: it rewrites a CloudFront URL to
+  // this app's own same-origin /media proxy (next.config.ts), so the request
+  // is same-origin and never subject to CORS in the first place — no Origin
+  // header, nothing to strip or get cached wrong. Non-CloudFront URLs (the
+  // Open Library ingest-failure fallback) pass through unchanged.
+  const cover = useTexture(toMediaUrl(book.textureUrl), (loaded) => {
     const texture = Array.isArray(loaded) ? loaded[0] : loaded;
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = 8;
-
-    const derived = deriveSpineColor(texture.image as CanvasImageSource);
-    if (derived) setSpineColor(derived);
   });
 
   // BoxGeometry material order: [+X, -X, +Y, -Y, +Z, -Z]

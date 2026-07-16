@@ -18,6 +18,11 @@ export interface Book {
   // Larger variant used for the 3D render (detail view + story export).
   // Falls back to coverUrl on the API for books added before this existed.
   textureUrl: string;
+  // Raw dominant color computed server-side at ingest; re-lit into the final
+  // spine tint by relightSpineColor (src/lib/coverColor.ts). Null for books
+  // added before this existed, or where extraction found nothing to sample —
+  // callers fall back to FALLBACK_SPINE_COLOR in that case.
+  spineColor: string | null;
   dateStarted: string;   // ISO date, e.g. "2024-05-12"
   dateFinished: string;  // ISO date, e.g. "2024-05-28"
   bookNumber: number;
@@ -31,6 +36,7 @@ export const mockBooks: Book[] = [
     author: "Paulo Coelho",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9780061122415-L.jpg",
     textureUrl: "https://covers.openlibrary.org/b/isbn/9780061122415-L.jpg",
+    spineColor: null,
     dateStarted: "2024-01-04",
     dateFinished: "2024-01-12",
     bookNumber: 41,
@@ -42,6 +48,7 @@ export const mockBooks: Book[] = [
     author: "Yuval Noah Harari",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9780062316097-L.jpg",
     textureUrl: "https://covers.openlibrary.org/b/isbn/9780062316097-L.jpg",
+    spineColor: null,
     dateStarted: "2024-01-18",
     dateFinished: "2024-02-09",
     bookNumber: 42,
@@ -53,6 +60,7 @@ export const mockBooks: Book[] = [
     author: "Tara Westover",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9780399590504-L.jpg",
     textureUrl: "https://covers.openlibrary.org/b/isbn/9780399590504-L.jpg",
+    spineColor: null,
     dateStarted: "2024-02-14",
     dateFinished: "2024-02-27",
     bookNumber: 43,
@@ -64,6 +72,7 @@ export const mockBooks: Book[] = [
     author: "James Clear",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg",
     textureUrl: "https://covers.openlibrary.org/b/isbn/9780735211292-L.jpg",
+    spineColor: null,
     dateStarted: "2024-03-02",
     dateFinished: "2024-03-15",
     bookNumber: 44,
@@ -75,6 +84,7 @@ export const mockBooks: Book[] = [
     author: "Matt Haig",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9780525559474-L.jpg",
     textureUrl: "https://covers.openlibrary.org/b/isbn/9780525559474-L.jpg",
+    spineColor: null,
     dateStarted: "2024-03-20",
     dateFinished: "2024-03-29",
     bookNumber: 45,
@@ -86,6 +96,7 @@ export const mockBooks: Book[] = [
     author: "Andy Weir",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9780593135204-L.jpg",
     textureUrl: "https://covers.openlibrary.org/b/isbn/9780593135204-L.jpg",
+    spineColor: null,
     dateStarted: "2024-04-03",
     dateFinished: "2024-04-19",
     bookNumber: 46,
@@ -97,6 +108,7 @@ export const mockBooks: Book[] = [
     author: "Frank Herbert",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9780441013593-L.jpg",
     textureUrl: "https://covers.openlibrary.org/b/isbn/9780441013593-L.jpg",
+    spineColor: null,
     dateStarted: "2024-04-25",
     dateFinished: "2024-05-22",
     bookNumber: 47,
@@ -108,6 +120,7 @@ export const mockBooks: Book[] = [
     author: "Sally Rooney",
     coverUrl: "https://covers.openlibrary.org/b/isbn/9781984822178-L.jpg",
     textureUrl: "https://covers.openlibrary.org/b/isbn/9781984822178-L.jpg",
+    spineColor: null,
     dateStarted: "2024-05-27",
     dateFinished: "2024-06-04",
     bookNumber: 48,

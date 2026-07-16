@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { Book } from "@/features/library/mockBooks";
-import { deriveSpineColor, FALLBACK_SPINE_COLOR } from "@/lib/coverColor";
+import { relightSpineColor } from "@/lib/coverColor";
+import { toMediaUrl } from "@/lib/mediaUrl";
 
 // Offscreen, imperative Three.js render of a single book to a transparent PNG
 // data URL — the hero image for the story export card. This is NOT React Three
@@ -30,17 +31,21 @@ const TILT_X = THREE.MathUtils.degToRad(3);
     export spec. Browser-only (needs WebGL + a DOM canvas). Resolves once the
     cover texture has loaded and the single frame is captured. */
 export async function renderBookToDataURL(book: Book): Promise<string> {
-  // Load the cover up front so we have its pixels for both the texture and the
-  // spine-color extraction. crossOrigin keeps the canvas clean (Open Library
-  // serves `Access-Control-Allow-Origin: *`), which toDataURL() requires.
+  // crossOrigin is required here because toDataURL() below needs a
+  // non-tainted canvas — WebGL refuses to even upload a cross-origin texture
+  // without it (see Book3D.tsx). toMediaUrl() makes this a same-origin
+  // request instead of cross-site, same reasoning as Book3D.tsx — see that
+  // file for the full history of what this replaced.
   const loader = new THREE.TextureLoader();
   loader.setCrossOrigin("anonymous");
-  const cover = await loader.loadAsync(book.coverUrl);
+  const cover = await loader.loadAsync(toMediaUrl(book.coverUrl));
   cover.colorSpace = THREE.SRGBColorSpace;
   cover.anisotropy = 8;
 
-  const spineColor =
-    deriveSpineColor(cover.image as CanvasImageSource) ?? FALLBACK_SPINE_COLOR;
+  // Server-computed at ingest (see Book3D.tsx) — no client-side extraction
+  // needed here anymore either, and it keeps the export's spine tint
+  // identical to what the live 3D view showed.
+  const spineColor = relightSpineColor(book.spineColor);
 
   const scene = new THREE.Scene();
 

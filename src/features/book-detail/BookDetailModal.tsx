@@ -68,6 +68,9 @@ function ordinal(n: number): string {
   }
 }
 
+// Mirrors server/db/09_quote_length_constraint.sql.
+const MAX_QUOTE_LENGTH = 150;
+
 export default function BookDetailModal({
   book,
   isOwner,
@@ -243,10 +246,16 @@ export default function BookDetailModal({
 
           {editingQuote && isOwner ? (
             <div className="mt-8 flex flex-col gap-3">
+              <div className="flex items-center justify-end">
+                <span className="font-sans text-[0.6rem] tracking-[0.1em] text-muted">
+                  {draft.length}/{MAX_QUOTE_LENGTH}
+                </span>
+              </div>
               <textarea
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 rows={3}
+                maxLength={MAX_QUOTE_LENGTH}
                 autoFocus
                 className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-serif text-lg italic leading-relaxed text-foreground/90 outline-none transition-colors focus:border-accent/60"
               />

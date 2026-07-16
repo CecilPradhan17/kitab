@@ -33,6 +33,9 @@ const MIN_QUERY_LENGTH = 2;
 const ALLOWED_COVER_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_COVER_BYTES = 5 * 1024 * 1024; // 5MB
 
+// Mirrors server/db/09_quote_length_constraint.sql.
+const MAX_QUOTE_LENGTH = 150;
+
 export default function AddBookModal({ open, onClose, onAdded }: AddBookModalProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookSearchResult[]>([]);
@@ -331,13 +334,19 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
               </div>
 
               <label className="flex flex-col gap-1.5">
-                <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
-                  Quote
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
+                    Quote
+                  </span>
+                  <span className="font-sans text-[0.6rem] tracking-[0.1em] text-muted">
+                    {quote.length}/{MAX_QUOTE_LENGTH}
+                  </span>
+                </div>
                 <textarea
                   value={quote}
                   onChange={(event) => setQuote(event.target.value)}
                   rows={3}
+                  maxLength={MAX_QUOTE_LENGTH}
                   placeholder="A line worth remembering…"
                   className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-serif text-base italic leading-relaxed text-foreground placeholder:not-italic placeholder:font-sans placeholder:text-sm placeholder:text-muted/60 outline-none transition-colors focus:border-accent/60"
                 />

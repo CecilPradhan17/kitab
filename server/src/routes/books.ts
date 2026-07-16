@@ -30,6 +30,8 @@ export interface Book {
 
 export const booksRouter = Router();
 
+const MAX_QUOTE_LENGTH = 150; // mirrors the quote_length CHECK constraint (server/db/09_quote_length_constraint.sql)
+
 // GET /api/books — the authenticated user's library, in reading order.
 booksRouter.get("/", requireAuth, async (req, res) => {
   try {
@@ -104,6 +106,9 @@ booksRouter.post("/", requireAuth, async (req, res) => {
   }
 
   if (quote != null && typeof quote !== "string") errors.push("quote must be a string");
+  if (typeof quote === "string" && quote.length > MAX_QUOTE_LENGTH) {
+    errors.push(`quote must be ${MAX_QUOTE_LENGTH} characters or fewer`);
+  }
 
   if (errors.length > 0) {
     return res.status(400).json({ error: "Invalid book", details: errors });
@@ -192,6 +197,9 @@ booksRouter.patch("/:id", requireAuth, async (req, res) => {
   // Quote stays required (every book has one) — reject empty just like add does.
   if (typeof quote !== "string" || quote.trim() === "") {
     return res.status(400).json({ error: "quote is required" });
+  }
+  if (quote.length > MAX_QUOTE_LENGTH) {
+    return res.status(400).json({ error: `quote must be ${MAX_QUOTE_LENGTH} characters or fewer` });
   }
 
   try {

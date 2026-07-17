@@ -6,6 +6,7 @@ import { updateProfile } from "./profileApi";
 import { getStoredToken } from "@/lib/auth";
 
 const MAX_BIO_LENGTH = 280; // mirrors server/db/08_bio_length_constraint.sql
+const MAX_DISPLAY_NAME_LENGTH = 50; // mirrors server/db/10_display_name_length_constraint.sql
 
 interface EditProfileModalProps {
   /** The profile to edit, or null when the modal is closed — same pattern as
@@ -69,8 +70,8 @@ export default function EditProfileModal({
         bio: bio.trim(),
       });
       onSaved(updated);
-    } catch {
-      setError("Couldn't save. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't save. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -103,15 +104,21 @@ export default function EditProfileModal({
 
         <div className="mt-6 flex flex-col gap-5">
           <div className="flex flex-col gap-2">
-            <label
-              htmlFor="displayName"
-              className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted"
-            >
-              Display name
-            </label>
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="displayName"
+                className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted"
+              >
+                Display name
+              </label>
+              <span className="font-sans text-[0.6rem] tracking-[0.1em] text-muted">
+                {displayName.length}/{MAX_DISPLAY_NAME_LENGTH}
+              </span>
+            </div>
             <input
               id="displayName"
               type="text"
+              maxLength={MAX_DISPLAY_NAME_LENGTH}
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
               placeholder="Your name"

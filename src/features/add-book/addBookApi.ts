@@ -1,5 +1,6 @@
 import type { Book } from "@/features/library/mockBooks";
 import { getStoredToken } from "@/lib/auth";
+import { parseApiError } from "@/lib/apiError";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -113,7 +114,7 @@ export async function createCustomBook(
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to create custom book: ${res.status} ${res.statusText}`);
+    throw new Error(await parseApiError(res, `Failed to create custom book: ${res.status} ${res.statusText}`));
   }
 
   const created: { id: string; title: string; author: string; coverUrl: string } = await res.json();

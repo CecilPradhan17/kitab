@@ -1,4 +1,5 @@
 import type { Profile } from "./types";
+import { parseApiError } from "@/lib/apiError";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -40,7 +41,7 @@ export async function updateProfile(
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to update profile: ${res.status} ${res.statusText}`);
+    throw new Error(await parseApiError(res, `Failed to update profile: ${res.status} ${res.statusText}`));
   }
 
   return res.json();

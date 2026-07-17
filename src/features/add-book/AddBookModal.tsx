@@ -36,6 +36,10 @@ const MAX_COVER_BYTES = 5 * 1024 * 1024; // 5MB
 // Mirrors server/db/09_quote_length_constraint.sql.
 const MAX_QUOTE_LENGTH = 150;
 
+// Mirrors server/db/13_custom_books_length_constraint.sql.
+const MAX_TITLE_LENGTH = 200;
+const MAX_AUTHOR_LENGTH = 100;
+
 export default function AddBookModal({ open, onClose, onAdded }: AddBookModalProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookSearchResult[]>([]);
@@ -244,8 +248,8 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
       });
       setAddingCustom(false);
       setSelected(created); // hands off into the existing details phase
-    } catch {
-      setCustomError("Couldn't add this book. Please try again.");
+    } catch (err) {
+      setCustomError(err instanceof Error ? err.message : "Couldn't add this book. Please try again.");
     } finally {
       setCustomSubmitting(false);
     }
@@ -395,22 +399,34 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
 
                 <div className="flex flex-1 flex-col gap-3">
                   <label className="flex flex-col gap-1.5">
-                    <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
-                      Title
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
+                        Title
+                      </span>
+                      <span className="font-sans text-[0.6rem] tracking-[0.1em] text-muted">
+                        {customTitle.length}/{MAX_TITLE_LENGTH}
+                      </span>
+                    </div>
                     <input
                       type="text"
+                      maxLength={MAX_TITLE_LENGTH}
                       value={customTitle}
                       onChange={(event) => setCustomTitle(event.target.value)}
                       className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-sans text-sm text-foreground outline-none transition-colors focus:border-accent/60"
                     />
                   </label>
                   <label className="flex flex-col gap-1.5">
-                    <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
-                      Author
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
+                        Author
+                      </span>
+                      <span className="font-sans text-[0.6rem] tracking-[0.1em] text-muted">
+                        {customAuthor.length}/{MAX_AUTHOR_LENGTH}
+                      </span>
+                    </div>
                     <input
                       type="text"
+                      maxLength={MAX_AUTHOR_LENGTH}
                       value={customAuthor}
                       onChange={(event) => setCustomAuthor(event.target.value)}
                       className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 font-sans text-sm text-foreground outline-none transition-colors focus:border-accent/60"

@@ -68,6 +68,21 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Dismissing (backdrop click, close button, Escape) while mid-way through
+  // the "add manually" form drops back to search instead of closing outright
+  // — the form isn't a destination in itself, just a detour on the way to
+  // picking a book. Once a custom book has actually been created, `addingCustom`
+  // is already false (see handleCreateCustomBook), so dismissing from that
+  // point on closes the modal as normal.
+  function handleDismiss() {
+    if (customSubmitting) return;
+    if (addingCustom) {
+      setAddingCustom(false);
+    } else {
+      onClose();
+    }
+  }
+
   // Close on Escape and lock body scroll while open — mirrors BookDetailModal.
   // Guarded against customSubmitting the same way AvatarUploadModal guards
   // its own in-flight upload, so an accidental Escape can't abandon it.
@@ -75,7 +90,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
     if (!open) return;
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && !customSubmitting) onClose();
+      if (event.key === "Escape") handleDismiss();
     }
 
     document.addEventListener("keydown", handleKeyDown);
@@ -86,7 +101,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [open, onClose, customSubmitting]);
+  }, [open, addingCustom, customSubmitting]);
 
   // Reset all state whenever the modal closes, so it opens fresh next time.
   useEffect(() => {
@@ -262,7 +277,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
       role="dialog"
       aria-modal="true"
       aria-label="Add a book"
-      onClick={() => !customSubmitting && onClose()}
+      onClick={handleDismiss}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
     >
       <div
@@ -272,7 +287,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
         {/* Close affordance */}
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleDismiss}
           aria-label="Close"
           className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
         >
@@ -381,21 +396,37 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
             </p>
 
             <form onSubmit={handleCreateCustomBook} className="mt-6 flex flex-col gap-5">
-              <div className="flex gap-4">
-                <div className="h-28 w-[4.7rem] shrink-0 overflow-hidden rounded-md ring-1 ring-white/10">
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => customFileInputRef.current?.click()}
+                  disabled={customSubmitting}
+                  aria-label={customFile ? "Change cover image" : "Choose cover image"}
+                  className="group relative h-28 w-[4.7rem] shrink-0 overflow-hidden rounded-md text-left outline-none ring-1 ring-white/10 transition-colors hover:ring-accent/50 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+                >
                   {customPreviewUrl ? (
-                    <img
-                      src={customPreviewUrl}
-                      alt=""
-                      aria-hidden
-                      className="h-full w-full object-cover"
-                    />
+                    <>
+                      <img
+                        src={customPreviewUrl}
+                        alt=""
+                        aria-hidden
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                        <span className="font-sans text-[0.55rem] uppercase tracking-[0.15em] text-white">
+                          Change
+                        </span>
+                      </div>
+                    </>
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center bg-black/30 font-sans text-[0.55rem] uppercase tracking-[0.15em] text-muted">
-                      No cover
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-black/30 font-sans text-[0.55rem] uppercase tracking-[0.15em] text-muted transition-colors group-hover:text-foreground">
+                      <span aria-hidden className="text-base leading-none">
+                        +
+                      </span>
+                      <span>Add cover</span>
                     </div>
                   )}
-                </div>
+                </button>
 
                 <div className="flex flex-1 flex-col gap-3">
                   <label className="flex flex-col gap-1.5">
@@ -442,34 +473,18 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
                 onChange={handleCustomFileSelected}
                 className="hidden"
               />
-              <button
-                type="button"
-                onClick={() => customFileInputRef.current?.click()}
-                disabled={customSubmitting}
-                className="inline-flex self-start rounded-full border border-white/15 px-4 py-1.5 font-sans text-xs uppercase tracking-[0.2em] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {customFile ? "Change cover" : "Choose cover image"}
-              </button>
 
               {customError && (
                 <p className="font-sans text-sm text-red-400/80">{customError}</p>
               )}
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center justify-end">
                 <button
                   type="submit"
                   disabled={customSubmitting}
-                  className="inline-flex self-start rounded-full border border-accent/50 px-6 py-2.5 font-sans text-xs uppercase tracking-[0.2em] text-accent outline-none transition-colors hover:bg-accent hover:text-background focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-accent"
+                  className="inline-flex rounded-full border border-accent/50 px-6 py-2.5 font-sans text-xs uppercase tracking-[0.2em] text-accent outline-none transition-colors hover:bg-accent hover:text-background focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-accent"
                 >
-                  {customSubmitting ? "Adding…" : "Continue"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAddingCustom(false)}
-                  disabled={customSubmitting}
-                  className="font-sans text-xs uppercase tracking-[0.2em] text-muted outline-none transition-colors hover:text-foreground focus-visible:underline disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  ← Back to search
+                  {customSubmitting ? "Adding…" : "Create"}
                 </button>
               </div>
             </form>

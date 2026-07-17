@@ -15,6 +15,7 @@ const ALLOWED_AVATAR_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5MB
 const AVATAR_SIZE = 256; // px, square thumbnail actually served to clients
 const MAX_BIO_LENGTH = 280; // mirrors the bio_length CHECK constraint (server/db/08_bio_length_constraint.sql)
+const MAX_DISPLAY_NAME_LENGTH = 50; // mirrors the display_name_length CHECK constraint (server/db/10_display_name_length_constraint.sql)
 
 // Keyed by user id, not IP — this route is already auth-gated, so the
 // authenticated identity is a more meaningful limit than an IP address
@@ -196,6 +197,10 @@ usersRouter.patch("/me", requireAuth, async (req, res) => {
   const values: unknown[] = [];
 
   if (displayName !== undefined) {
+    if (typeof displayName === "string" && displayName.length > MAX_DISPLAY_NAME_LENGTH) {
+      res.status(400).json({ error: `displayName must be ${MAX_DISPLAY_NAME_LENGTH} characters or fewer` });
+      return;
+    }
     updates.push(`display_name = $${values.length + 1}`);
     values.push(displayName ?? null);
   }

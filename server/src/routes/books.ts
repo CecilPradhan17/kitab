@@ -31,6 +31,8 @@ export interface Book {
 export const booksRouter = Router();
 
 const MAX_QUOTE_LENGTH = 150; // mirrors the quote_length CHECK constraint (server/db/09_quote_length_constraint.sql)
+const MAX_TITLE_LENGTH = 200; // mirrors the title_length CHECK constraint (server/db/11_title_length_constraint.sql)
+const MAX_AUTHOR_LENGTH = 100; // mirrors the author_length CHECK constraint (server/db/12_author_length_constraint.sql)
 
 // GET /api/books — the authenticated user's library, in reading order.
 booksRouter.get("/", requireAuth, async (req, res) => {
@@ -90,7 +92,13 @@ booksRouter.post("/", requireAuth, async (req, res) => {
   // untyped JSON, so every field is checked explicitly rather than trusted.
   const errors: string[] = [];
   if (typeof title !== "string" || title.trim() === "") errors.push("title is required");
+  if (typeof title === "string" && title.length > MAX_TITLE_LENGTH) {
+    errors.push(`title must be ${MAX_TITLE_LENGTH} characters or fewer`);
+  }
   if (typeof author !== "string" || author.trim() === "") errors.push("author is required");
+  if (typeof author === "string" && author.length > MAX_AUTHOR_LENGTH) {
+    errors.push(`author must be ${MAX_AUTHOR_LENGTH} characters or fewer`);
+  }
 
   const hasIsbn = typeof isbn === "string" && isbn.trim() !== "";
   const hasCustomBookId = typeof customBookId === "string" && customBookId.trim() !== "";

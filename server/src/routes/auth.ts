@@ -6,6 +6,8 @@ import { requireAuth } from "../middleware/requireAuth";
 
 export const authRouter = Router();
 
+const MAX_DISPLAY_NAME_LENGTH = 50; // mirrors the display_name_length CHECK constraint (server/db/10_display_name_length_constraint.sql)
+
 // POST /api/auth/register
 // Body: { username, email, password, displayName? }
 authRouter.post("/register", async (req, res) => {
@@ -37,6 +39,11 @@ authRouter.post("/register", async (req, res) => {
 
   if (password.length < 8) {
     res.status(400).json({ error: "password must be at least 8 characters" });
+    return;
+  }
+
+  if (typeof displayName === "string" && displayName.length > MAX_DISPLAY_NAME_LENGTH) {
+    res.status(400).json({ error: `displayName must be ${MAX_DISPLAY_NAME_LENGTH} characters or fewer` });
     return;
   }
 

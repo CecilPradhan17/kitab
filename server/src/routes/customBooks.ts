@@ -11,6 +11,9 @@ import { extractRawSpineColor } from "../lib/spineColor";
 
 export const customBooksRouter = Router();
 
+const MAX_TITLE_LENGTH = 200; // mirrors the title_length CHECK constraint (server/db/13_custom_books_length_constraint.sql)
+const MAX_AUTHOR_LENGTH = 100; // mirrors the author_length CHECK constraint (server/db/13_custom_books_length_constraint.sql)
+
 // Same limits as avatar upload (server/src/routes/users.ts) — a custom book
 // cover is the same shape of problem (user-supplied image, presigned direct
 // upload to S3), just for a shared catalog entry instead of a private profile.
@@ -98,7 +101,13 @@ customBooksRouter.post("/", requireAuth, async (req, res) => {
 
   const errors: string[] = [];
   if (typeof title !== "string" || title.trim() === "") errors.push("title is required");
+  if (typeof title === "string" && title.length > MAX_TITLE_LENGTH) {
+    errors.push(`title must be ${MAX_TITLE_LENGTH} characters or fewer`);
+  }
   if (typeof author !== "string" || author.trim() === "") errors.push("author is required");
+  if (typeof author === "string" && author.length > MAX_AUTHOR_LENGTH) {
+    errors.push(`author must be ${MAX_AUTHOR_LENGTH} characters or fewer`);
+  }
 
   // The key must belong to this user's own raw-upload namespace — otherwise a
   // client could hand us any S3 key (someone else's upload, or an arbitrary

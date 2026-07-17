@@ -474,14 +474,6 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
               className="mt-4 w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-sans text-sm text-foreground placeholder:text-muted/60 outline-none transition-colors focus:border-accent/60"
             />
 
-            <button
-              type="button"
-              onClick={() => setAddingCustom(true)}
-              className="mt-2 self-start font-sans text-xs text-muted outline-none transition-colors hover:text-accent focus-visible:underline"
-            >
-              Can&rsquo;t find it? Add it manually
-            </button>
-
             {/* Results / status region */}
             <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
               {searching && (
@@ -538,6 +530,20 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
                   );
                 })}
               </ul>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomError(null);
+                  setAddingCustom(true);
+                }}
+                className="inline-flex items-center gap-2 rounded-md border border-accent/30 bg-accent/5 px-4 py-2 font-sans text-xs uppercase tracking-[0.2em] text-accent outline-none transition-colors hover:border-accent/60 hover:bg-accent/10 focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <span aria-hidden className="text-sm leading-none">+</span>
+                Add your own book
+              </button>
             </div>
           </div>
         )}

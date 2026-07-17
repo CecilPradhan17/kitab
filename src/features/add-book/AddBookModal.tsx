@@ -60,6 +60,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
   const [customPreviewUrl, setCustomPreviewUrl] = useState<string | null>(null);
   const [customSubmitting, setCustomSubmitting] = useState(false);
   const [customError, setCustomError] = useState<string | null>(null);
+  const [showCustomInfo, setShowCustomInfo] = useState(false);
 
   // Details-phase form state.
   const [dateStarted, setDateStarted] = useState("");
@@ -118,6 +119,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
       setCustomPreviewUrl(null);
       setCustomSubmitting(false);
       setCustomError(null);
+      setShowCustomInfo(false);
       setDateStarted("");
       setDateFinished("");
       setQuote("");
@@ -296,9 +298,11 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
           </span>
         </button>
 
-        <p className="font-sans text-[0.65rem] uppercase tracking-[0.25em] text-accent">
-          Add to library
-        </p>
+        {!addingCustom && (
+          <p className="font-sans text-[0.65rem] uppercase tracking-[0.25em] text-accent">
+            Add to library
+          </p>
+        )}
 
         {selected ? (
           /* ---- Details phase (form lands in 3b) ---- */
@@ -387,46 +391,80 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
         ) : addingCustom ? (
           /* ---- Add-manually phase ---- */
           <div className="mt-4 flex min-h-0 flex-col">
-            <h2 className="font-serif text-2xl leading-tight text-foreground">
-              Add a book
-            </h2>
-            <p className="mt-1 font-sans text-xs text-muted">
-              This gets added to a shared catalog — other people will find it
-              in search too.
-            </p>
-
-            <form onSubmit={handleCreateCustomBook} className="mt-6 flex flex-col gap-5">
-              <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <h2 className="font-serif text-2xl leading-tight text-foreground">
+                Add your own book
+              </h2>
+              <div
+                className="relative top-0.5"
+                onMouseEnter={() => setShowCustomInfo(true)}
+                onMouseLeave={() => setShowCustomInfo(false)}
+              >
                 <button
                   type="button"
-                  onClick={() => customFileInputRef.current?.click()}
-                  disabled={customSubmitting}
-                  aria-label={customFile ? "Change cover image" : "Choose cover image"}
-                  className="group relative h-28 w-[4.7rem] shrink-0 overflow-hidden rounded-md text-left outline-none ring-1 ring-white/10 transition-colors hover:ring-accent/50 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => setShowCustomInfo((current) => !current)}
+                  onFocus={() => setShowCustomInfo(true)}
+                  onBlur={() => setShowCustomInfo(false)}
+                  aria-expanded={showCustomInfo}
+                  aria-label="About adding your own book"
+                  className="flex h-4 w-4 items-center justify-center rounded-full border border-white/20 font-sans text-[0.55rem] font-bold leading-none text-muted outline-none transition-colors hover:border-white/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
                 >
-                  {customPreviewUrl ? (
-                    <>
-                      <img
-                        src={customPreviewUrl}
-                        alt=""
-                        aria-hidden
-                        className="h-full w-full object-cover"
-                      />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-                        <span className="font-sans text-[0.55rem] uppercase tracking-[0.15em] text-white">
-                          Change
+                  i
+                </button>
+                {showCustomInfo && (
+                  <div
+                    role="tooltip"
+                    className="absolute left-1/2 top-full z-10 mt-2.5 w-64 -translate-x-1/2 rounded-lg border border-white/10 bg-[#161616] p-3 font-sans text-xs leading-relaxed text-muted shadow-xl shadow-black/60"
+                  >
+                    <span
+                      aria-hidden
+                      className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-l border-t border-white/10 bg-[#161616]"
+                    />
+                    Only add a book if it hasn&rsquo;t been added before, the
+                    information is inaccurate, or the cover quality is bad.
+                    Other users will be able to find your addition in their
+                    search as well.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateCustomBook} className="mt-6 flex flex-col gap-5">
+              <div className="flex gap-4">
+                <div className="flex w-[4.7rem] shrink-0 flex-col gap-1.5">
+                  <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
+                    Add cover
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => customFileInputRef.current?.click()}
+                    disabled={customSubmitting}
+                    aria-label={customFile ? "Change cover image" : "Choose cover image"}
+                    className="group relative flex-1 w-full overflow-hidden rounded-md text-left outline-none ring-1 ring-white/10 transition-colors hover:ring-accent/50 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {customPreviewUrl ? (
+                      <>
+                        <img
+                          src={customPreviewUrl}
+                          alt=""
+                          aria-hidden
+                          className="h-full w-full object-cover"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                          <span className="font-sans text-[0.55rem] uppercase tracking-[0.15em] text-white">
+                            Change
+                          </span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-black/30 text-base text-muted transition-colors group-hover:text-foreground">
+                        <span aria-hidden className="leading-none">
+                          +
                         </span>
                       </div>
-                    </>
-                  ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-black/30 font-sans text-[0.55rem] uppercase tracking-[0.15em] text-muted transition-colors group-hover:text-foreground">
-                      <span aria-hidden className="text-base leading-none">
-                        +
-                      </span>
-                      <span>Add cover</span>
-                    </div>
-                  )}
-                </button>
+                    )}
+                  </button>
+                </div>
 
                 <div className="flex flex-1 flex-col gap-3">
                   <label className="flex flex-col gap-1.5">

@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import type { Book } from "@/features/library/mockBooks";
 import { renderBookToDataURL } from "./renderBook";
 import StoryExportCard, { CARD_WIDTH, CARD_HEIGHT } from "./StoryExportCard";
 
-// Scale the 1080×1920 card down to a comfortable on-screen preview. The capture
-// always happens off the full-size (un-scaled) node, so this only affects what
-// the user sees, never the exported pixels.
-const PREVIEW_SCALE = 0.33;
+// The on-screen preview's max width, in CSS px (roughly what the old fixed
+// 0.33 scale produced). The actual scale is measured at runtime from the
+// preview box's real rendered width, which shrinks on narrow viewports via
+// w-full — so the card always fits the modal instead of overflowing on
+// small screens. The captured PNG is untouched either way: capturePng()
+// always renders the hidden, full-size node at exactly CARD_WIDTH×CARD_HEIGHT
+// (1080×1920, Instagram Story format), independent of this preview scale.
+const PREVIEW_MAX_WIDTH = 352;
 
 interface ExportModalProps {
   /** The book to export, or null when closed — same single-source-of-truth
@@ -34,6 +38,31 @@ export default function ExportModal({ book, onClose }: ExportModalProps) {
   // separate from the visible (scaled) preview so capture never has to undo a
   // CSS transform.
   const captureRef = useRef<HTMLDivElement>(null);
+
+  // The visible preview box (sized via CSS, not JS) and the scale factor
+  // measured from its actual rendered width, so the 1080-wide card always
+  // fits it exactly.
+  const previewBoxRef = useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = useState(PREVIEW_MAX_WIDTH / CARD_WIDTH);
+
+  // Recompute the scale whenever the preview box's rendered width changes —
+  // first layout, viewport resize, or orientation change — instead of a
+  // fixed constant, so the 9:16 card fits the modal on any screen size
+  // rather than overflowing it on narrow ones. Keyed on `book`: this
+  // component stays mounted permanently (the parent just swaps `book`
+  // between null and a value), so the box's ref is still null on the very
+  // first mount — an empty dependency array would attach the observer to
+  // nothing and never retry once the ref actually exists.
+  useLayoutEffect(() => {
+    const node = previewBoxRef.current;
+    if (!node) return;
+    const observer = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width;
+      if (width) setPreviewScale(width / CARD_WIDTH);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [book]);
 
   // Render the 3D hero whenever a book opens. Reset all state first so a
   // re-open (or switching books) never shows the previous book's render.
@@ -168,18 +197,18 @@ export default function ExportModal({ book, onClose }: ExportModalProps) {
           Share to story
         </h2>
 
-        {/* Preview area, sized to the scaled card so layout is stable whether
-            we're showing a spinner, an error, or the finished card. The card is
-            scaled from its top-left corner: a CSS transform doesn't shrink the
-            element's 1080×1920 layout box, so it must NOT be flex-centered here
-            (that would center the full-size box and clip it away) — it's pinned
-            to the corner and fills the sized container exactly. */}
+        {/* Preview area. w-full (capped by max-w) lets the box itself shrink
+            to fit the modal on narrow screens; aspect-[9/16] keeps it at the
+            card's true Instagram Story ratio at any width. The ResizeObserver
+            above measures this box's real rendered width every time it
+            changes, so previewScale always matches exactly. The card is
+            scaled from its top-left corner: a CSS transform doesn't shrink
+            the element's 1080×1920 layout box, so it must NOT be flex-centered
+            here (that would center the full-size box and clip it away) —
+            it's pinned to the corner and fills the sized container exactly. */}
         <div
-          className="relative overflow-hidden rounded-lg"
-          style={{
-            width: CARD_WIDTH * PREVIEW_SCALE,
-            height: CARD_HEIGHT * PREVIEW_SCALE,
-          }}
+          ref={previewBoxRef}
+          className="relative w-full max-w-[352px] aspect-[9/16] overflow-hidden rounded-lg"
         >
           {renderError ? (
             <div className="flex h-full w-full items-center justify-center">
@@ -196,7 +225,7 @@ export default function ExportModal({ book, onClose }: ExportModalProps) {
           ) : (
             <div
               style={{
-                transform: `scale(${PREVIEW_SCALE})`,
+                transform: `scale(${previewScale})`,
                 transformOrigin: "top left",
               }}
             >

@@ -275,18 +275,18 @@ export default function BookDetailModal({
                 <div className="flex justify-end gap-2">
                   <button
                     type="button"
+                    onClick={() => setEditingQuote(false)}
+                    className="inline-flex rounded-full px-4 py-1.5 font-sans text-[0.65rem] uppercase tracking-[0.15em] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
                     onClick={handleSaveQuote}
                     disabled={savingQuote}
                     className="inline-flex rounded-full border border-accent/50 px-4 py-1.5 font-sans text-[0.65rem] uppercase tracking-[0.15em] text-accent outline-none transition-colors hover:bg-accent hover:text-background focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-accent"
                   >
                     {savingQuote ? "Saving…" : "Save"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditingQuote(false)}
-                    className="inline-flex rounded-full px-4 py-1.5 font-sans text-[0.65rem] uppercase tracking-[0.15em] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
-                  >
-                    Cancel
                   </button>
                 </div>
               </div>
@@ -321,14 +321,19 @@ export default function BookDetailModal({
               The one solid-gold element in the modal — this is the pride-to-
               share moment, so it's the loudest thing on screen. The flex-1
               slot above absorbs all leftover height, so this always lands
-              at the bottom of the column without needing its own margin. */}
-          <button
-            type="button"
-            onClick={() => setExporting(true)}
-            className="inline-flex self-center rounded-full bg-accent px-5 py-2 font-sans text-[0.65rem] uppercase tracking-[0.2em] text-background outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f0f]"
-          >
-            Share
-          </button>
+              at the bottom of the column without needing its own margin.
+              Owner-only: sharing a book to a story is an action taken on
+              your own library, not something a visitor does on someone
+              else's. */}
+          {isOwner && (
+            <button
+              type="button"
+              onClick={() => setExporting(true)}
+              className="inline-flex self-center rounded-full bg-accent px-5 py-2 font-sans text-[0.65rem] uppercase tracking-[0.2em] text-background outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f0f]"
+            >
+              Share
+            </button>
+          )}
         </div>
 
         {/* Delete affordance — bottom-right corner, below the close button,

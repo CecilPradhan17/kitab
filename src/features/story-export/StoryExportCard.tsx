@@ -1,4 +1,6 @@
 import type { Book } from "@/features/library/mockBooks";
+import type { Profile } from "@/features/profile/types";
+import { toMediaUrl } from "@/lib/mediaUrl";
 
 // The export card is authored at EXACTLY the Instagram-Story resolution. These
 // are fixed device pixels, not responsive units, because `html-to-image` will
@@ -27,6 +29,12 @@ function formatMonthYear(iso: string): string {
 
 interface StoryExportCardProps {
   book: Book;
+  /** The library's owner, for the quote-attribution row (avatar + name)
+      beneath the quote. avatarUrl is routed through toMediaUrl() the same
+      way book textures are — html-to-image's canvas capture taints on a
+      cross-origin CloudFront <img> exactly like WebGL does, so it needs the
+      same same-origin /media proxy rewrite. */
+  profile: Profile;
   /** The hero image painted into the upper half — a base64 PNG of the offscreen
       3D book render (Chunk 2). Until that exists, any cover URL works as a
       stand-in so the layout/typography can be tuned. */
@@ -43,10 +51,12 @@ interface StoryExportCardProps {
     angle), so the card just frames it. */
 export default function StoryExportCard({
   book,
+  profile,
   heroSrc,
   quote,
 }: StoryExportCardProps) {
   const displayQuote = quote ?? book.quote;
+  const shownName = profile.displayName ?? profile.username;
 
   return (
     <div
@@ -129,6 +139,28 @@ export default function StoryExportCard({
         >
           {displayQuote}
         </blockquote>
+      </div>
+
+      {/* ── Quote attribution: reader's name + avatar, bottom-right of the
+          quote block. Same w-[820px]/px-[40px] as the quote above so its
+          right edge lines up with the quote's. No avatar shown if the
+          reader hasn't uploaded one — name alone, no fallback circle. */}
+      <div className="mt-[56px] flex w-[820px] items-center justify-end gap-[24px] px-[40px]">
+        <span
+          className="font-sans text-[30px] tracking-[0.02em]"
+          style={{ color: WARM_WHITE }}
+        >
+          {shownName}
+        </span>
+        {profile.avatarUrl && (
+          <img
+            src={toMediaUrl(profile.avatarUrl)}
+            alt=""
+            aria-hidden
+            className="h-[80px] w-[80px] rounded-full object-cover"
+            style={{ boxShadow: `0 0 0 2px ${ACCENT}59` }}
+          />
+        )}
       </div>
 
       {/* ── KITAB watermark, flanked by divider lines, pinned to the base ──── */}

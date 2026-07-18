@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import type { Book } from "@/features/library/mockBooks";
+import type { Profile } from "@/features/profile/types";
 import { renderBookToDataURL } from "./renderBook";
 import StoryExportCard, { CARD_WIDTH, CARD_HEIGHT } from "./StoryExportCard";
 
@@ -19,6 +20,11 @@ interface ExportModalProps {
   /** The book to export, or null when closed — same single-source-of-truth
       pattern as BookDetailModal (no separate "open" boolean). */
   book: Book | null;
+  /** The library's owner — passed straight through to StoryExportCard for
+      the quote-attribution avatar/name (both the visible preview and the
+      hidden full-size capture node need it, so the downloaded PNG matches
+      what's shown). */
+  profile: Profile;
   onClose: () => void;
 }
 
@@ -26,7 +32,7 @@ interface ExportModalProps {
     render, shows the resulting StoryExportCard, and lets the user copy or
     download it as a 1080×1920 PNG. Read-only here — the quote shown is whatever
     the book already has (quote editing will live in the detail modal later). */
-export default function ExportModal({ book, onClose }: ExportModalProps) {
+export default function ExportModal({ book, profile, onClose }: ExportModalProps) {
   // The 3D hero PNG, produced once per open. null while it's still rendering.
   const [heroSrc, setHeroSrc] = useState<string | null>(null);
   const [renderError, setRenderError] = useState<string | null>(null);
@@ -229,7 +235,7 @@ export default function ExportModal({ book, onClose }: ExportModalProps) {
                 transformOrigin: "top left",
               }}
             >
-              <StoryExportCard book={book} heroSrc={heroSrc!} />
+              <StoryExportCard book={book} profile={profile} heroSrc={heroSrc!} />
             </div>
           )}
         </div>
@@ -269,7 +275,7 @@ export default function ExportModal({ book, onClose }: ExportModalProps) {
           }}
         >
           <div ref={captureRef}>
-            <StoryExportCard book={book} heroSrc={heroSrc} />
+            <StoryExportCard book={book} profile={profile} heroSrc={heroSrc} />
           </div>
         </div>
       )}

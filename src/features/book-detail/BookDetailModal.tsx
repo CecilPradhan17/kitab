@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Book } from "@/features/library/mockBooks";
+import type { Profile } from "@/features/profile/types";
 import BookScene from "./BookScene";
 import ExportModal from "@/features/story-export/ExportModal";
 import { deleteBook, updateBookQuote } from "./bookDetailApi";
@@ -11,6 +12,10 @@ interface BookDetailModalProps {
       the selected book itself (rather than a separate boolean) keeps a single
       source of truth — there's no way to be "open" with no book. */
   book: Book | null;
+  /** The library's owner — passed straight through to the story-export card
+      (via ExportModal) for the quote-attribution avatar/name. Not used
+      elsewhere in this modal. */
+  profile: Profile;
   /** Whether the current viewer owns this library. Gates quote editing and
       delete — presentational only, the real check happens on the server when
       these actions hit Express. */
@@ -73,6 +78,7 @@ const MAX_QUOTE_LENGTH = 150;
 
 export default function BookDetailModal({
   book,
+  profile,
   isOwner,
   onClose,
   onBookUpdated,
@@ -394,6 +400,7 @@ export default function BookDetailModal({
         `exporting`; null when closed. */}
     <ExportModal
       book={exporting ? book : null}
+      profile={profile}
       onClose={() => setExporting(false)}
     />
     </>

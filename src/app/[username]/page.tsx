@@ -78,7 +78,12 @@ export default function ProfilePage() {
           </h2>
         </header>
 
-        <LibraryView books={books} isOwner={isOwner} onBooksChanged={fetchAll} />
+        <LibraryView
+          books={books}
+          profile={profile}
+          isOwner={isOwner}
+          onBooksChanged={fetchAll}
+        />
       </section>
     </main>
   );

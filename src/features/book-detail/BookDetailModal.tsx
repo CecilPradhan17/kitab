@@ -188,11 +188,11 @@ export default function BookDetailModal({
       aria-modal="true"
       aria-label={`${book.title} by ${book.author}`}
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm sm:p-6"
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        className="relative flex w-full max-w-3xl flex-col gap-6 overflow-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80 sm:flex-row sm:gap-10 sm:p-12"
+        className="relative flex w-full max-w-3xl flex-col gap-4 overflow-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80 sm:flex-row sm:gap-10 sm:p-12"
       >
         {/* Close affordance */}
         <button
@@ -242,16 +242,16 @@ export default function BookDetailModal({
             lands level with the delete button, since both sit at the
             bottom of a column stretched to the image's full height. */}
         <div className="flex flex-1 flex-col">
-          <h2 className="font-serif text-3xl leading-tight text-foreground">
+          <h2 className="font-serif text-2xl leading-tight text-foreground sm:text-3xl">
             {book.title}
           </h2>
-          <p className="mt-2 font-sans text-base text-muted">{book.author}</p>
+          <p className="mt-1 font-sans text-sm text-muted sm:mt-2 sm:text-base">{book.author}</p>
 
-          <p className="mt-7 font-sans text-[0.65rem] uppercase tracking-[0.2em] text-muted">
+          <p className="mt-4 font-sans text-[0.65rem] uppercase tracking-[0.2em] text-muted sm:mt-7">
             {formatReadingRange(book.dateStarted, book.dateFinished)}
           </p>
 
-          <div className="my-8 flex flex-1 flex-col items-center justify-center">
+          <div className="my-5 flex flex-1 flex-col items-center justify-center sm:my-8">
             {editingQuote && isOwner ? (
               <div className="flex w-full flex-col gap-3">
                 <div className="flex items-center justify-end">
@@ -292,14 +292,14 @@ export default function BookDetailModal({
               </div>
             ) : (
               <div className="flex w-full flex-col items-center">
-                <blockquote className="text-center font-serif text-xl italic leading-relaxed text-foreground/90 sm:leading-loose">
+                <blockquote className="text-center font-serif text-lg italic leading-normal text-foreground/90 sm:text-xl sm:leading-loose">
                   &ldquo;{book.quote}&rdquo;
                 </blockquote>
                 {/* Sits in flow right below the quote (so it tracks the quote's
                     height), but slides horizontally onto the same right-4 icon
                     rail as the close and delete buttons: the negative margin
-                    cancels the difference between the panel padding (p-8 →
-                    32px, sm:p-12 → 48px) and the rail's 16px inset. Same
+                    cancels the difference between the panel padding (p-6 →
+                    24px, sm:p-12 → 48px) and the rail's 16px inset. Same
                     h-9 w-9 hit area as those buttons, so equal right edges
                     mean the icon centers line up exactly. */}
                 {isOwner && (
@@ -308,7 +308,7 @@ export default function BookDetailModal({
                     onClick={startEditingQuote}
                     aria-label="Edit quote"
                     title="Edit quote"
-                    className="-mr-4 mt-3 flex h-9 w-9 shrink-0 items-center justify-center self-end rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent sm:-mr-8"
+                    className="-mr-2 mt-2 flex h-9 w-9 shrink-0 items-center justify-center self-end rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent sm:-mr-8 sm:mt-3"
                   >
                     <PencilIcon />
                   </button>

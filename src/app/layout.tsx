@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
 import "./globals.css";
+import SideNav from "@/features/nav/SideNav";
 
 // Serif display face for titles and the cinematic "reveal" moments.
 const playfair = Playfair_Display({
@@ -31,7 +32,10 @@ export default function RootLayout({
       lang="en"
       className={`${playfair.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <SideNav />
+        {children}
+      </body>
     </html>
   );
 }

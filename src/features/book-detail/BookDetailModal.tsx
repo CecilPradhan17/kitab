@@ -262,7 +262,7 @@ export default function BookDetailModal({
                 <textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
-                  rows={3}
+                  rows={6}
                   maxLength={MAX_QUOTE_LENGTH}
                   autoFocus
                   className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-serif text-lg italic leading-relaxed text-foreground/90 outline-none transition-colors focus:border-accent/60"
@@ -272,19 +272,19 @@ export default function BookDetailModal({
                   <p className="font-sans text-sm text-red-400/80">{quoteError}</p>
                 )}
 
-                <div className="flex gap-3">
+                <div className="flex justify-end gap-2">
                   <button
                     type="button"
                     onClick={handleSaveQuote}
                     disabled={savingQuote}
-                    className="inline-flex rounded-full border border-accent/50 px-5 py-2 font-sans text-xs uppercase tracking-[0.2em] text-accent outline-none transition-colors hover:bg-accent hover:text-background focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-accent"
+                    className="inline-flex rounded-full border border-accent/50 px-4 py-1.5 font-sans text-[0.65rem] uppercase tracking-[0.15em] text-accent outline-none transition-colors hover:bg-accent hover:text-background focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-accent"
                   >
                     {savingQuote ? "Saving…" : "Save"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditingQuote(false)}
-                    className="inline-flex rounded-full px-5 py-2 font-sans text-xs uppercase tracking-[0.2em] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+                    className="inline-flex rounded-full px-4 py-1.5 font-sans text-[0.65rem] uppercase tracking-[0.15em] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
                   >
                     Cancel
                   </button>

@@ -215,7 +215,7 @@ export default function BookDetailModal({
             {ordinal(book.bookNumber)} book {isOwner ? "you've read" : "read"}
           </span>
 
-          <div className="relative aspect-[2/3] w-64 sm:w-72">
+          <div className="relative aspect-[2/3] w-44 sm:w-72">
             <div
               aria-hidden
               className="pointer-events-none absolute inset-[-20%] rounded-full opacity-70 blur-2xl"

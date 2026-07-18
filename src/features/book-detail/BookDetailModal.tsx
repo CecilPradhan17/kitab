@@ -251,7 +251,7 @@ export default function BookDetailModal({
             {formatReadingRange(book.dateStarted, book.dateFinished)}
           </p>
 
-          <div className="flex flex-1 flex-col items-center justify-center">
+          <div className="my-8 flex flex-1 flex-col items-center justify-center">
             {editingQuote && isOwner ? (
               <div className="flex w-full flex-col gap-3">
                 <div className="flex items-center justify-end">

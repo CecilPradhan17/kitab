@@ -233,12 +233,15 @@ export default function BookDetailModal({
           </div>
         </div>
 
-        {/* Metadata, editorial style. Split into a top content block and a
-            bottom-pinned share button: the button uses mt-auto so it always
-            sits at the bottom of the column (matching the 3D book's height),
-            regardless of how tall the quote/editing content above it is. */}
+        {/* Metadata, editorial style. Title/author/date are top-anchored and
+            Share is the last flex item, so both sit at a fixed height no
+            matter what the quote does. The flex-1 middle slot between them
+            absorbs all the leftover space and centers the quote inside it
+            (vertically + horizontally), so quote length never moves the
+            date above it or the Share button below it — Share naturally
+            lands level with the delete button, since both sit at the
+            bottom of a column stretched to the image's full height. */}
         <div className="flex flex-1 flex-col">
-          <div className="pb-8">
           <h2 className="font-serif text-3xl leading-tight text-foreground">
             {book.title}
           </h2>
@@ -248,75 +251,81 @@ export default function BookDetailModal({
             {formatReadingRange(book.dateStarted, book.dateFinished)}
           </p>
 
-          {editingQuote && isOwner ? (
-            <div className="mt-8 flex flex-col gap-3">
-              <div className="flex items-center justify-end">
-                <span className="font-sans text-[0.6rem] tracking-[0.1em] text-muted">
-                  {draft.length}/{MAX_QUOTE_LENGTH}
-                </span>
-              </div>
-              <textarea
-                value={draft}
-                onChange={(event) => setDraft(event.target.value)}
-                rows={3}
-                maxLength={MAX_QUOTE_LENGTH}
-                autoFocus
-                className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-serif text-lg italic leading-relaxed text-foreground/90 outline-none transition-colors focus:border-accent/60"
-              />
+          <div className="flex flex-1 flex-col items-center justify-center">
+            {editingQuote && isOwner ? (
+              <div className="flex w-full flex-col gap-3">
+                <div className="flex items-center justify-end">
+                  <span className="font-sans text-[0.6rem] tracking-[0.1em] text-muted">
+                    {draft.length}/{MAX_QUOTE_LENGTH}
+                  </span>
+                </div>
+                <textarea
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  rows={3}
+                  maxLength={MAX_QUOTE_LENGTH}
+                  autoFocus
+                  className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-serif text-lg italic leading-relaxed text-foreground/90 outline-none transition-colors focus:border-accent/60"
+                />
 
-              {quoteError && (
-                <p className="font-sans text-sm text-red-400/80">{quoteError}</p>
-              )}
+                {quoteError && (
+                  <p className="font-sans text-sm text-red-400/80">{quoteError}</p>
+                )}
 
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleSaveQuote}
-                  disabled={savingQuote}
-                  className="inline-flex rounded-full border border-accent/50 px-5 py-2 font-sans text-xs uppercase tracking-[0.2em] text-accent outline-none transition-colors hover:bg-accent hover:text-background focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-accent"
-                >
-                  {savingQuote ? "Saving…" : "Save"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingQuote(false)}
-                  className="inline-flex rounded-full px-5 py-2 font-sans text-xs uppercase tracking-[0.2em] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
-                >
-                  Cancel
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={handleSaveQuote}
+                    disabled={savingQuote}
+                    className="inline-flex rounded-full border border-accent/50 px-5 py-2 font-sans text-xs uppercase tracking-[0.2em] text-accent outline-none transition-colors hover:bg-accent hover:text-background focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-accent"
+                  >
+                    {savingQuote ? "Saving…" : "Save"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingQuote(false)}
+                    className="inline-flex rounded-full px-5 py-2 font-sans text-xs uppercase tracking-[0.2em] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="relative mt-8">
-              <blockquote className="pb-8 text-center font-serif text-xl italic leading-relaxed text-foreground/90">
-                &ldquo;{book.quote}&rdquo;
-              </blockquote>
-              {isOwner && (
-                <button
-                  type="button"
-                  onClick={startEditingQuote}
-                  aria-label="Edit quote"
-                  title="Edit quote"
-                  className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
-                >
-                  <PencilIcon />
-                </button>
-              )}
-            </div>
-          )}
+            ) : (
+              <div className="flex w-full flex-col items-center">
+                <blockquote className="text-center font-serif text-xl italic leading-relaxed text-foreground/90 sm:leading-loose">
+                  &ldquo;{book.quote}&rdquo;
+                </blockquote>
+                {/* Sits in flow right below the quote (so it tracks the quote's
+                    height), but slides horizontally onto the same right-4 icon
+                    rail as the close and delete buttons: the negative margin
+                    cancels the difference between the panel padding (p-8 →
+                    32px, sm:p-12 → 48px) and the rail's 16px inset. Same
+                    h-9 w-9 hit area as those buttons, so equal right edges
+                    mean the icon centers line up exactly. */}
+                {isOwner && (
+                  <button
+                    type="button"
+                    onClick={startEditingQuote}
+                    aria-label="Edit quote"
+                    title="Edit quote"
+                    className="-mr-4 mt-3 flex h-9 w-9 shrink-0 items-center justify-center self-end rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent sm:-mr-8"
+                  >
+                    <PencilIcon />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Opens the export preview/share modal, stacked on top of this one.
               The one solid-gold element in the modal — this is the pride-to-
-              share moment, so it's the loudest thing on screen. mt-auto pins
-              it to the bottom of the column instead of trailing directly
-              under the quote, so it lines up with the base of the 3D book
-              (the pb-8 on the content block above guarantees a minimum gap
-              even when the quote is long enough to fill the column). */}
+              share moment, so it's the loudest thing on screen. The flex-1
+              slot above absorbs all leftover height, so this always lands
+              at the bottom of the column without needing its own margin. */}
           <button
             type="button"
             onClick={() => setExporting(true)}
-            className="mt-auto inline-flex self-center rounded-full bg-accent px-5 py-2 font-sans text-[0.65rem] uppercase tracking-[0.2em] text-background outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f0f]"
+            className="inline-flex self-center rounded-full bg-accent px-5 py-2 font-sans text-[0.65rem] uppercase tracking-[0.2em] text-background outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f0f]"
           >
             Share
           </button>

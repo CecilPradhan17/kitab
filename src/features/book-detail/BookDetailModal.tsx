@@ -192,7 +192,7 @@ export default function BookDetailModal({
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        className="relative flex w-full max-w-3xl flex-col gap-4 overflow-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80 sm:flex-row sm:gap-10 sm:p-12"
+        className="relative flex w-full max-w-3xl max-h-full flex-col gap-4 overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80 sm:flex-row sm:gap-10 sm:p-12"
       >
         {/* Close affordance */}
         <button

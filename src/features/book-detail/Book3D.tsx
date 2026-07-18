@@ -1,6 +1,8 @@
 "use client";
 
+import { useRef } from "react";
 import * as THREE from "three";
+import { useFrame } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import type { Book } from "@/features/library/mockBooks";
 import { relightSpineColor } from "@/lib/coverColor";
@@ -16,6 +18,15 @@ const DEPTH = 0.45;
 // Cream page edges keep the top/bottom/right faces reading as paper.
 const PAGE_COLOR = "#e8e0cf";
 
+// Intro settle animation: the book opens yawed this far past its resting
+// pose (rotation.y = 0) — negative turns it further right, toward its plain
+// page-edge side — then damps back down to 0 each mount. Flip the sign to
+// reverse the direction if it reads backwards on screen.
+const INTRO_YAW_OFFSET = -0.7;
+// Higher = snaps back faster. Passed to THREE.MathUtils.damp, which is
+// frame-rate independent (unlike a plain per-frame lerp).
+const INTRO_YAW_DAMPING = 2.2;
+
 interface Book3DProps {
   book: Book;
 }
@@ -26,6 +37,17 @@ export default function Book3D({ book }: Book3DProps) {
   // spine/back tint is now just synchronous color math, no async
   // extraction/canvas-pixel-read needed once the texture itself loads.
   const spineColor = relightSpineColor(book.spineColor);
+
+  const meshRef = useRef<THREE.Mesh>(null!);
+  // Mutable, not state — it changes every frame and never needs a re-render;
+  // useFrame writes straight to the mesh's rotation instead.
+  const introYaw = useRef(INTRO_YAW_OFFSET);
+
+  useFrame((_, delta) => {
+    if (introYaw.current === 0) return;
+    introYaw.current = THREE.MathUtils.damp(introYaw.current, 0, INTRO_YAW_DAMPING, delta);
+    meshRef.current.rotation.y = introYaw.current;
+  });
 
   // Suspends until the cover loads (caught by the <Suspense> in BookScene).
   // textureUrl is the larger S3/CloudFront variant made for close-up 3D use
@@ -53,7 +75,7 @@ export default function Book3D({ book }: Book3DProps) {
   // BoxGeometry material order: [+X, -X, +Y, -Y, +Z, -Z]
   //                             right left top bottom front back
   return (
-    <mesh castShadow receiveShadow>
+    <mesh ref={meshRef} rotation-y={INTRO_YAW_OFFSET} castShadow receiveShadow>
       <boxGeometry args={[WIDTH, HEIGHT, DEPTH]} />
       <meshStandardMaterial attach="material-0" color={PAGE_COLOR} roughness={0.9} />
       <meshStandardMaterial attach="material-1" color={spineColor} roughness={0.55} />

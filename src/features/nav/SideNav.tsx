@@ -65,7 +65,7 @@ export default function SideNav() {
         aria-label="Open menu"
         aria-expanded={open}
         aria-controls="side-nav"
-        className="fixed left-5 top-5 z-40 flex h-9 w-9 flex-col items-center justify-center gap-[5px] rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+        className="absolute left-5 top-5 z-40 flex h-9 w-9 flex-col items-center justify-center gap-[5px] rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
       >
         <span aria-hidden className="h-px w-4 bg-current" />
         <span aria-hidden className="h-px w-4 bg-current" />

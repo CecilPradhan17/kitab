@@ -233,14 +233,18 @@ export default function BookDetailModal({
           </div>
         </div>
 
-        {/* Metadata, editorial style */}
+        {/* Metadata, editorial style. Split into a top content block and a
+            bottom-pinned share button: the button uses mt-auto so it always
+            sits at the bottom of the column (matching the 3D book's height),
+            regardless of how tall the quote/editing content above it is. */}
         <div className="flex flex-1 flex-col">
+          <div className="pb-8">
           <h2 className="font-serif text-3xl leading-tight text-foreground">
             {book.title}
           </h2>
-          <p className="mt-1 font-sans text-base text-muted">{book.author}</p>
+          <p className="mt-2 font-sans text-base text-muted">{book.author}</p>
 
-          <p className="mt-6 font-sans text-[0.65rem] uppercase tracking-[0.2em] text-muted">
+          <p className="mt-7 font-sans text-[0.65rem] uppercase tracking-[0.2em] text-muted">
             {formatReadingRange(book.dateStarted, book.dateFinished)}
           </p>
 
@@ -283,8 +287,8 @@ export default function BookDetailModal({
               </div>
             </div>
           ) : (
-            <div className="mt-8">
-              <blockquote className="font-serif text-xl italic leading-relaxed text-foreground/90">
+            <div className="relative mt-8">
+              <blockquote className="pb-8 text-center font-serif text-xl italic leading-relaxed text-foreground/90">
                 &ldquo;{book.quote}&rdquo;
               </blockquote>
               {isOwner && (
@@ -293,21 +297,26 @@ export default function BookDetailModal({
                   onClick={startEditingQuote}
                   aria-label="Edit quote"
                   title="Edit quote"
-                  className="mt-3 flex h-7 w-7 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+                  className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <PencilIcon />
                 </button>
               )}
             </div>
           )}
+          </div>
 
           {/* Opens the export preview/share modal, stacked on top of this one.
               The one solid-gold element in the modal — this is the pride-to-
-              share moment, so it's the loudest thing on screen. */}
+              share moment, so it's the loudest thing on screen. mt-auto pins
+              it to the bottom of the column instead of trailing directly
+              under the quote, so it lines up with the base of the 3D book
+              (the pb-8 on the content block above guarantees a minimum gap
+              even when the quote is long enough to fill the column). */}
           <button
             type="button"
             onClick={() => setExporting(true)}
-            className="mt-8 inline-flex self-center rounded-full bg-accent px-5 py-2 font-sans text-[0.65rem] uppercase tracking-[0.2em] text-background outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f0f]"
+            className="mt-auto inline-flex self-center rounded-full bg-accent px-5 py-2 font-sans text-[0.65rem] uppercase tracking-[0.2em] text-background outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f0f]"
           >
             Share
           </button>

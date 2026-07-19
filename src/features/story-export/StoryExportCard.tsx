@@ -73,8 +73,28 @@ export default function StoryExportCard({
         }}
       />
 
+      {/* ── KITAB watermark, flanked by divider lines — the card's header ──── */}
+      <div className="mt-[64px] flex items-center gap-[28px]">
+        <span
+          aria-hidden
+          className="block h-px w-[90px]"
+          style={{ background: `${ACCENT}80` }}
+        />
+        <span
+          className="font-sans text-[28px] font-medium uppercase tracking-[0.5em] text-white"
+          style={{ paddingLeft: "0.5em" /* offset the trailing letter-spacing */ }}
+        >
+          Kitab
+        </span>
+        <span
+          aria-hidden
+          className="block h-px w-[90px]"
+          style={{ background: `${ACCENT}80` }}
+        />
+      </div>
+
       {/* ── Hero: the 3D book render, upper half ───────────────────────────── */}
-      <div className="relative mt-[150px] flex h-[680px] w-full items-center justify-center">
+      <div className="relative mt-[56px] flex h-[680px] w-full items-center justify-center">
         {/* Gold underglow — a wide, heavily-blurred ellipse pooled beneath the
             book's base, echoing the grid card's underglow but warmer/larger for
             the hero. Sits behind the book image. */}
@@ -141,46 +161,35 @@ export default function StoryExportCard({
         </blockquote>
       </div>
 
-      {/* ── Quote attribution: reader's name + avatar, bottom-right of the
-          quote block. Same w-[820px]/px-[40px] as the quote above so its
-          right edge lines up with the quote's. No avatar shown if the
-          reader hasn't uploaded one — name alone, no fallback circle. */}
-      <div className="mt-[56px] flex w-[820px] items-center justify-end gap-[24px] px-[40px]">
+      {/* ── Quote attribution: reader's avatar + name, pinned to the base now
+          that KITAB has moved up top — this is the card's footer. A short
+          dash sits to the left of the avatar; the name drops below that row.
+          Right-aligned to w-[820px]/px-[40px], same as the quote above, so
+          the whole block's right edge lines up with the quote's. No dash or
+          avatar shown if the reader hasn't uploaded a photo — name alone. */}
+      <div className="mb-[90px] mt-auto flex w-[820px] flex-col items-end gap-[18px] px-[40px]">
+        {profile.avatarUrl && (
+          <div className="flex items-center gap-[20px]">
+            <span
+              aria-hidden
+              className="block h-px w-[48px]"
+              style={{ background: `${ACCENT}80` }}
+            />
+            <img
+              src={toMediaUrl(profile.avatarUrl)}
+              alt=""
+              aria-hidden
+              className="h-[80px] w-[80px] rounded-full object-cover"
+              style={{ boxShadow: `0 0 0 2px ${ACCENT}59` }}
+            />
+          </div>
+        )}
         <span
           className="font-sans text-[30px] tracking-[0.02em]"
           style={{ color: WARM_WHITE }}
         >
           {shownName}
         </span>
-        {profile.avatarUrl && (
-          <img
-            src={toMediaUrl(profile.avatarUrl)}
-            alt=""
-            aria-hidden
-            className="h-[80px] w-[80px] rounded-full object-cover"
-            style={{ boxShadow: `0 0 0 2px ${ACCENT}59` }}
-          />
-        )}
-      </div>
-
-      {/* ── KITAB watermark, flanked by divider lines, pinned to the base ──── */}
-      <div className="mb-[90px] mt-auto flex items-center gap-[28px]">
-        <span
-          aria-hidden
-          className="block h-px w-[90px]"
-          style={{ background: `${ACCENT}80` }}
-        />
-        <span
-          className="font-sans text-[28px] font-medium uppercase tracking-[0.5em] text-white"
-          style={{ paddingLeft: "0.5em" /* offset the trailing letter-spacing */ }}
-        >
-          Kitab
-        </span>
-        <span
-          aria-hidden
-          className="block h-px w-[90px]"
-          style={{ background: `${ACCENT}80` }}
-        />
       </div>
     </div>
   );

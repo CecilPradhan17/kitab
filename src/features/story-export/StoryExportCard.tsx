@@ -144,33 +144,43 @@ export default function StoryExportCard({
       <Divider />
 
       {/* ── Quote ──────────────────────────────────────────────────────────── */}
-      <div className="relative mt-[20px] flex w-[820px] flex-col items-center px-[40px]">
-        {/* Left-aligned heading introducing the quote, instead of the old
-            centered oversized gold quotation mark. self-start overrides the
-            parent's items-center just for this one child. */}
+      {/* flex-1 here (not on the attribution block below) is what pins both
+          "Reader's note:" and the attribution to fixed positions regardless
+          of quote length: this section grows to consume all the leftover
+          space in the card's fixed 1920px height, so the attribution block
+          right after it always lands in the same spot. The heading sits at
+          its natural (top) position via normal flow; the nested flex-1
+          wrapper below it centers the blockquote in whatever space is left
+          after the heading — giving equal gaps above and below the quote at
+          any quote length, since CARD_HEIGHT is a real fixed pixel value
+          (unlike the app's own auto-height mobile modals, where flex-grow
+          has no free space to distribute). */}
+      <div className="relative mt-[20px] flex w-[820px] flex-1 flex-col items-center px-[40px]">
         <span
           className="self-start font-sans text-[26px] tracking-[0.02em]"
           style={{ color: ACCENT }}
         >
           Reader&rsquo;s note:
         </span>
-        <blockquote
-          className="mt-[24px] text-center font-serif text-[44px] italic leading-[1.4]"
-          style={{ color: WARM_WHITE }}
-        >
-          {displayQuote}
-        </blockquote>
+        <div className="flex w-full flex-1 flex-col items-center justify-center">
+          <blockquote
+            className="text-center font-serif text-[44px] italic leading-[1.4]"
+            style={{ color: WARM_WHITE }}
+          >
+            {displayQuote}
+          </blockquote>
+        </div>
       </div>
 
-      {/* ── Quote attribution: reader's avatar + name, pinned to the base now
-          that KITAB has moved up top — this is the card's footer. A short
-          dash sits to the left of the avatar; the name drops below that row.
-          Deliberately shifted further right/down than the quote's own
-          w-[820px]/px-[40px] edge (pr-[90px] vs. the quote's 170px inset,
-          mb-[50px] vs. the old mb-[90px]) rather than mirroring it exactly.
-          No dash or avatar shown if the reader hasn't uploaded a photo —
-          name alone. */}
-      <div className="mb-[50px] mt-auto flex w-full flex-col items-end gap-[20px] pr-[90px]">
+      {/* ── Quote attribution: reader's avatar + name — this is the card's
+          footer, now that KITAB has moved up top. A short dash sits to the
+          left of the avatar; the name drops below that row. Deliberately
+          shifted further right/down than the quote's own w-[820px]/px-[40px]
+          edge (pr-[90px] vs. the quote's 170px inset). No mt-auto needed
+          here — the quote section's own flex-1 above already pins this to
+          the same spot every time. No dash or avatar shown if the reader
+          hasn't uploaded a photo — name alone. */}
+      <div className="mb-[50px] flex w-full flex-col items-end gap-[20px] pr-[90px]">
         {profile.avatarUrl && (
           <div className="flex items-center gap-[22px]">
             <span

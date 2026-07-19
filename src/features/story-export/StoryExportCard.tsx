@@ -145,16 +145,17 @@ export default function StoryExportCard({
 
       {/* ── Quote ──────────────────────────────────────────────────────────── */}
       <div className="relative mt-[20px] flex w-[820px] flex-col items-center px-[40px]">
-        {/* Oversized opening quotation mark, gold, sitting above the quote. */}
+        {/* Left-aligned heading introducing the quote, instead of the old
+            centered oversized gold quotation mark. self-start overrides the
+            parent's items-center just for this one child. */}
         <span
-          aria-hidden
-          className="font-serif italic leading-[0.6]"
-          style={{ color: ACCENT, fontSize: 180, opacity: 0.85 }}
+          className="self-start font-sans text-[26px] tracking-[0.02em]"
+          style={{ color: ACCENT }}
         >
-          &ldquo;
+          Reader&rsquo;s note:
         </span>
         <blockquote
-          className="mt-[-30px] text-center font-serif text-[44px] italic leading-[1.4]"
+          className="mt-[24px] text-center font-serif text-[44px] italic leading-[1.4]"
           style={{ color: WARM_WHITE }}
         >
           {displayQuote}
@@ -164,22 +165,24 @@ export default function StoryExportCard({
       {/* ── Quote attribution: reader's avatar + name, pinned to the base now
           that KITAB has moved up top — this is the card's footer. A short
           dash sits to the left of the avatar; the name drops below that row.
-          Right-aligned to w-[820px]/px-[40px], same as the quote above, so
-          the whole block's right edge lines up with the quote's. No dash or
-          avatar shown if the reader hasn't uploaded a photo — name alone. */}
-      <div className="mb-[90px] mt-auto flex w-[820px] flex-col items-end gap-[18px] px-[40px]">
+          Deliberately shifted further right/down than the quote's own
+          w-[820px]/px-[40px] edge (pr-[90px] vs. the quote's 170px inset,
+          mb-[50px] vs. the old mb-[90px]) rather than mirroring it exactly.
+          No dash or avatar shown if the reader hasn't uploaded a photo —
+          name alone. */}
+      <div className="mb-[50px] mt-auto flex w-full flex-col items-end gap-[20px] pr-[90px]">
         {profile.avatarUrl && (
-          <div className="flex items-center gap-[20px]">
+          <div className="flex items-center gap-[22px]">
             <span
               aria-hidden
-              className="block h-px w-[48px]"
+              className="block h-px w-[56px]"
               style={{ background: `${ACCENT}80` }}
             />
             <img
               src={toMediaUrl(profile.avatarUrl)}
               alt=""
               aria-hidden
-              className="h-[80px] w-[80px] rounded-full object-cover"
+              className="h-[104px] w-[104px] rounded-full object-cover"
               style={{ boxShadow: `0 0 0 2px ${ACCENT}59` }}
             />
           </div>

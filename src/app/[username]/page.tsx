@@ -48,7 +48,16 @@ export default function ProfilePage() {
     setLoading(false);
   }, [username]);
 
+  // react-hooks/set-state-in-effect fires here, but doesn't apply: this is
+  // the standard fetch-on-mount pattern (data fetching is a documented,
+  // legitimate effect use case), not the "reset local state when a prop
+  // changes" case the rule is actually meant to steer away from a
+  // key-remount for. There's no synchronous alternative for an async
+  // network call, and fetchAll is intentionally a standalone function since
+  // LibraryView also calls it directly (as onBooksChanged) after an
+  // add/edit/delete, not just on mount.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAll();
   }, [fetchAll]);
 

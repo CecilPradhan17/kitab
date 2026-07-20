@@ -8,13 +8,19 @@ import Book3D from "./Book3D";
 
 interface BookSceneProps {
   book: Book;
+  /** Fired once after the cover texture has actually loaded and the book
+      mesh is about to render for the first time — not merely once the
+      WebGL context exists (Canvas's own onCreated fires immediately, well
+      before the texture is ready, which would be a false-early "ready"
+      signal). See Book3D's useEffect for where this actually fires. */
+  onReady?: () => void;
 }
 
 /** The on-demand 3D stage for a single book. Transparent background so the
     modal's dark panel shows through; lighting is mostly-dark with a warm gold
     rim to match the editorial/cinematic brand. Only mounts client-side (the
     modal renders nothing on the server), so the Canvas never hits SSR. */
-export default function BookScene({ book }: BookSceneProps) {
+export default function BookScene({ book, onReady }: BookSceneProps) {
   return (
     <Canvas
       dpr={[1, 2]}
@@ -40,7 +46,7 @@ export default function BookScene({ book }: BookSceneProps) {
       />
 
       <Suspense fallback={null}>
-        <Book3D book={book} />
+        <Book3D book={book} onReady={onReady} />
       </Suspense>
 
       {/* Drag to rotate the book left/right only — no auto-spin. Pinning the

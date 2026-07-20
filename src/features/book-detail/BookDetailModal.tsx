@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { Book } from "@/features/library/mockBooks";
 import type { Profile } from "@/features/profile/types";
 import BookScene from "./BookScene";
+import BookDetailSkeleton from "./BookDetailSkeleton";
 import ExportModal from "@/features/story-export/ExportModal";
 import { deleteBook, updateBookQuote } from "./bookDetailApi";
 
@@ -87,6 +88,13 @@ export default function BookDetailModal({
   // Whether the export modal is stacked on top of this detail modal.
   const [exporting, setExporting] = useState(false);
 
+  // Whether the 3D scene's cover texture has finished loading. Gates a
+  // coordinated reveal (see the render below): the skeleton covers the real
+  // content — which is already mounted and loading in the background, just
+  // invisible — until this flips true, at which point the 3D model and all
+  // text/metadata fade in together in one transition. Never partially true.
+  const [sceneReady, setSceneReady] = useState(false);
+
   // Inline quote-editing state.
   const [editingQuote, setEditingQuote] = useState(false);
   const [draft, setDraft] = useState("");
@@ -99,8 +107,13 @@ export default function BookDetailModal({
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Leave edit/confirm modes whenever the shown book changes (switch or close),
-  // so neither carries over from one book to another.
+  // so neither carries over from one book to another. sceneReady resets here
+  // too, so switching books always shows the skeleton fresh rather than
+  // instantly revealing the new book with the old one's scene still loaded
+  // (BookScene's key={book.id} remounts the Canvas anyway, but resetting
+  // this explicitly is what actually re-covers it with the skeleton).
   useEffect(() => {
+    setSceneReady(false);
     setEditingQuote(false);
     setQuoteError(null);
     setConfirmingDelete(false);
@@ -198,9 +211,11 @@ export default function BookDetailModal({
     >
       <div
         onClick={(event) => event.stopPropagation()}
-        className="relative flex w-full max-w-3xl max-h-full flex-col gap-4 overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80 sm:flex-row sm:gap-10 sm:p-12"
+        className="relative flex w-full max-w-3xl max-h-full flex-col overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80 sm:p-12"
       >
-        {/* Close affordance */}
+        {/* Close affordance — outside the skeleton/reveal pair below on
+            purpose: it's modal chrome, not book content, so it's clickable
+            immediately rather than waiting on the scene. */}
         <button
           type="button"
           onClick={onClose}
@@ -212,6 +227,28 @@ export default function BookDetailModal({
           </span>
         </button>
 
+        {/* Skeleton + real content, coordinated: the real content below is
+            always mounted (so the 3D scene actually loads and can call
+            onReady), just invisible and non-interactive until sceneReady —
+            never a partial state of text without the model or vice versa.
+            The skeleton sits on top via absolute inset-0, sized to match
+            since the (invisible but present) real content drives this
+            wrapper's actual box size. */}
+        <div className="relative flex flex-1 flex-col">
+          {!sceneReady && (
+            <div className="absolute inset-0 z-10">
+              <BookDetailSkeleton />
+            </div>
+          )}
+
+          <div
+            style={{
+              opacity: sceneReady ? 1 : 0,
+              transition: "opacity 0.3s ease",
+              pointerEvents: sceneReady ? "auto" : "none",
+            }}
+            className="flex w-full flex-1 flex-col gap-4 sm:flex-row sm:gap-10"
+          >
         {/* The live 3D book, staged on a soft warm glow — an exhibit under a
             spotlight, not a flat cutout. Keyed on book.id so switching books
             remounts the scene with a fresh texture instead of mutating the
@@ -235,7 +272,7 @@ export default function BookDetailModal({
               className="pointer-events-none absolute inset-x-[15%] bottom-[6%] h-6 rounded-full opacity-80 blur-md"
               style={{ background: "rgba(201,151,58,0.35)" }}
             />
-            <BookScene key={book.id} book={book} />
+            <BookScene key={book.id} book={book} onReady={() => setSceneReady(true)} />
           </div>
         </div>
 
@@ -392,6 +429,8 @@ export default function BookDetailModal({
             )}
           </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
 

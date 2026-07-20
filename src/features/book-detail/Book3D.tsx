@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
@@ -29,9 +29,16 @@ const INTRO_YAW_DAMPING = 2.2;
 
 interface Book3DProps {
   book: Book;
+  /** Fired once, after render, when this component's function body has run
+      to completion — which (since useTexture below suspends the whole
+      component until the cover has loaded) only happens once the texture is
+      actually ready to paint onto the mesh. React discards and re-invokes a
+      suspended component's entire function on each attempt, so this effect
+      can't fire prematurely on an earlier, still-loading attempt. */
+  onReady?: () => void;
 }
 
-export default function Book3D({ book }: Book3DProps) {
+export default function Book3D({ book, onReady }: Book3DProps) {
   // book.spineColor is the raw dominant color computed server-side at
   // ingest (server/src/lib/spineColor.ts) — re-lighting it into the final
   // spine/back tint is now just synchronous color math, no async
@@ -71,6 +78,17 @@ export default function Book3D({ book }: Book3DProps) {
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = 8;
   });
+
+  // Only reachable once useTexture above has resolved — see the onReady
+  // prop's doc comment. Empty deps deliberately: this must fire exactly
+  // once per mount, not re-fire whenever the inline onReady callback from
+  // BookDetailModal gets a new function identity on some unrelated parent
+  // re-render. BookScene keys the Canvas on book.id, so a new book is a
+  // full remount (a fresh effect run) rather than a re-render of this one.
+  useEffect(() => {
+    onReady?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // BoxGeometry material order: [+X, -X, +Y, -Y, +Z, -Z]
   //                             right left top bottom front back

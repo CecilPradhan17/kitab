@@ -1,10 +1,4 @@
-// Shared by every placeholder block: warm-dark shimmer gradient (not the
-// standard cold grey skeleton) sweeping via the `animate-shimmer` utility
-// registered in globals.css. bg-[#1a1917] is the fallback/base tone the
-// gradient sits on; the gradient itself is 3-stop so the sweep reads as a
-// highlight passing over the block rather than a flat color shift.
-const SHIMMER =
-  "animate-shimmer bg-[#1a1917] bg-[length:200%_100%] bg-[linear-gradient(90deg,#1a1917_25%,#2a2520_50%,#1a1917_75%)]";
+import { SHIMMER } from "@/lib/shimmer";
 
 /** Loading placeholder for BookDetailModal, shown until the 3D scene's cover
     texture has loaded. Mirrors the real modal's actual current layout (see

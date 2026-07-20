@@ -340,12 +340,18 @@ export default function BookDetailPanel({
           )}
         </div>
 
-        {/* Delete affordance — bottom-right corner, below the close button,
-            out of the metadata column's reading flow entirely. Confirm step
-            opens as a small popover anchored to the same corner since the
-            action is destructive and can't be undone. */}
+        {/* Delete affordance — bottom-right corner, on the same right-4 rail
+            as the close button (and the edit-quote pencil above). This div's
+            positioning context is BookDetailPanel's own root, which sits
+            inside the panel's p-6/sm:p-12 padding — so a plain bottom-4/
+            right-4 would land 8px/32px further in than the close button's
+            (which is positioned directly against the panel). The negative
+            offset cancels that out, the same compensation the pencil button
+            uses via a negative margin. Confirm step opens as a small popover
+            anchored to the same corner since the action is destructive and
+            can't be undone. */}
         {isOwner && (
-          <div className="absolute bottom-4 right-4">
+          <div className="absolute -bottom-2 -right-2 sm:-bottom-8 sm:-right-8">
             {confirmingDelete ? (
               <div className="w-60 rounded-xl border border-white/10 bg-[#161616] p-4 shadow-xl shadow-black/60">
                 <p className="font-sans text-xs leading-relaxed text-muted">

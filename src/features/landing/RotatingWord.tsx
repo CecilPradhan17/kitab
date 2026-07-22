@@ -39,6 +39,20 @@ export default function RotatingWord({
 
   return (
     <span className="relative inline-grid align-baseline text-left leading-[1.2]">
+      {/* Baseline anchor: plain text, no per-word font override, so the
+          grid's synthesized baseline (used by align-baseline above to seat
+          this whole box on the sentence's baseline) comes from the
+          surrounding font rather than from whichever word happens to be
+          first in `words`. Without this, a word styled in a different font
+          (e.g. Kitab's Cormorant) becoming the de facto reference would
+          throw every other word's vertical position off. */}
+      <span
+        aria-hidden
+        className="invisible col-start-1 row-start-1 whitespace-nowrap leading-[1.2]"
+      >
+        {words[0].text}
+      </span>
+
       {words.map((word) => (
         <span
           key={`${word.text}-sizer`}

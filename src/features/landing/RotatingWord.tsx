@@ -21,7 +21,7 @@ interface RotatingWordProps {
 // never shifts as shorter/longer words rotate through.
 export default function RotatingWord({
   words,
-  intervalMs = 2200,
+  intervalMs = 5000,
 }: RotatingWordProps) {
   const [index, setIndex] = useState(0);
   const fadeDuration = 500;
@@ -35,7 +35,7 @@ export default function RotatingWord({
   }, [intervalMs, words.length]);
 
   return (
-    <span className="relative inline-grid align-baseline text-left">
+    <span className="relative inline-grid items-baseline align-baseline text-left">
       {words.map((word, i) => (
         <span
           key={word.text}

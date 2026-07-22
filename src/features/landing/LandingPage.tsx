@@ -17,7 +17,14 @@ export default function LandingPage() {
       </p>
 
       <h1 className="mt-6 max-w-2xl font-serif text-4xl leading-tight text-foreground sm:text-6xl">
-        Your digital <RotatingWord words={["Kitab", "Book"]} /> collection.
+        Your digital{" "}
+        <RotatingWord
+          words={[
+            { text: "Kitab", className: "font-logo uppercase tracking-wide text-accent" },
+            { text: "Book", className: "text-foreground" },
+          ]}
+        />{" "}
+        collection.
       </h1>
 
       <p className="mt-6 max-w-md font-sans text-sm text-muted sm:text-base">

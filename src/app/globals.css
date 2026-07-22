@@ -16,6 +16,8 @@
   /* Serif for titles/reveal moments; sans for UI + metadata labels. */
   --font-serif: var(--font-playfair);
   --font-sans: var(--font-inter);
+  /* Kitab wordmark/logo only - see layout.tsx's comment. */
+  --font-logo: var(--font-cormorant);
   /* Registering this here (rather than an arbitrary animate-[...] value on
      each skeleton block) generates a plain `animate-shimmer` utility. */
   --animate-shimmer: shimmer 1.8s ease-in-out infinite;

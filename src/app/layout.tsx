@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
+import { Playfair_Display, Inter, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 import SideNav from "@/features/nav/SideNav";
 
@@ -17,6 +17,15 @@ const inter = Inter({
   display: "swap",
 });
 
+// Reserved for the Kitab wordmark/logo only ("K I T A B", white, wide
+// tracking) - not a general-purpose serif, don't reach for it elsewhere.
+const cormorant = Cormorant_Garamond({
+  variable: "--font-cormorant",
+  subsets: ["latin"],
+  weight: ["500"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Library",
   description: "A personal library of books read.",
@@ -30,7 +39,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${playfair.variable} ${inter.variable} h-full antialiased`}
+      className={`${playfair.variable} ${inter.variable} ${cormorant.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <SideNav />

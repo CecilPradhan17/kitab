@@ -61,24 +61,15 @@ export default function ProfilePage() {
     fetchAll();
   }, [fetchAll]);
 
-  // The static section header (label + heading) below isn't gated on
-  // loading - it's copy, not fetched data - so it renders identically in
-  // both branches rather than being part of what the skeleton stands in for.
+  // The KITAB logo + corner lines only appear once the real content is
+  // ready - the loading state has no stand-in for them, so the flourish
+  // (including its draw-in animation) plays exactly once, on real reveal.
   if (loading) {
     return (
       <main className="flex-1">
         <ProfileHeaderSkeleton />
 
         <section className="px-8 py-16 sm:px-16">
-          <header className="mb-12 flex justify-center">
-            <p
-              className="font-logo text-3xl tracking-[0.5em] text-white"
-              style={{ paddingLeft: "0.5em" /* offset the trailing letter-spacing */ }}
-            >
-              KITAB
-            </p>
-          </header>
-
           <div className="grid grid-cols-2 justify-items-center gap-x-8 gap-y-12 sm:mx-[10vw] sm:grid-cols-4 [&>*]:w-full [&>*]:max-w-40">
             {Array.from({ length: SKELETON_BOOK_COUNT }, (_, i) => (
               <BookCardSkeleton key={i} />
@@ -105,7 +96,7 @@ export default function ProfilePage() {
 
       <section className="px-8 py-16 sm:px-16">
         <header className="mb-12 flex flex-col items-center gap-2">
-          <p className="font-serif text-xl tracking-wide text-muted">
+          <p className="font-serif text-xl tracking-wide text-muted animate-header-label">
             {isOwner ? "YOUR" : "THE"}
           </p>
           <div className="relative flex w-full items-center justify-center">
@@ -127,7 +118,7 @@ export default function ProfilePage() {
               className="absolute -right-8 left-[calc(50%+8rem)] h-px origin-right animate-line-draw bg-white sm:-right-16"
             />
           </div>
-          <p className="font-serif text-xl tracking-wide text-muted">
+          <p className="font-serif text-xl tracking-wide text-muted animate-header-label">
             COLLECTION
           </p>
         </header>

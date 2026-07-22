@@ -23,7 +23,11 @@
   --animate-shimmer: shimmer 1.8s ease-in-out infinite;
   /* The library header's corner-to-center lines flanking the KITAB logo -
      runs once on mount, paired with origin-left/origin-right per side. */
-  --animate-line-draw: line-draw 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-line-draw: line-draw 3000ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* YOUR/THE + COLLECTION - the delay must match animate-line-draw's
+     duration above, so the labels only appear once the lines reach the
+     logo. */
+  --animate-header-label: header-label-fade 2000ms ease-out 1500ms both;
 }
 
 body {
@@ -50,5 +54,15 @@ body {
   }
   to {
     transform: scaleX(1);
+  }
+}
+
+/* Fades in the YOUR/THE and COLLECTION labels once the lines have arrived. */
+@keyframes header-label-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }

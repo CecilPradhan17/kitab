@@ -1,4 +1,5 @@
 import Link from "next/link";
+import RotatingWord from "./RotatingWord";
 
 // The marketing landing page shown to logged-out visitors at "/". Purely
 // presentational — the auth check and the redirect for logged-in users both
@@ -16,7 +17,7 @@ export default function LandingPage() {
       </p>
 
       <h1 className="mt-6 max-w-2xl font-serif text-4xl leading-tight text-foreground sm:text-6xl">
-        Your library, beautifully kept.
+        Your digital <RotatingWord words={["Kitab", "Book"]} /> collection.
       </h1>
 
       <p className="mt-6 max-w-md font-sans text-sm text-muted sm:text-base">

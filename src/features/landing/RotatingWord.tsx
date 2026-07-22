@@ -10,44 +10,64 @@ interface RotatingWordOption {
 
 interface RotatingWordProps {
   words: RotatingWordOption[];
-  /** How long each word stays fully visible before crossfading to the next, in ms. */
+  /** How long each word stays fully visible before scrolling to the next, in ms. */
   intervalMs?: number;
 }
 
-// Cycles through `words`, crossfading between them. All words are stacked
-// in the same CSS grid cell (grid-area: 1/1) instead of one node whose text
-// swaps — an opacity:0 word still occupies its layout space, so the grid
-// track sizes itself to the widest word up front and the surrounding text
-// never shifts as shorter/longer words rotate through.
+// Cycles through `words`, scrolling the next one up into view (like a
+// mechanical flip display) rather than fading. Two layers share one box:
+// an invisible "sizer" stack — one span per word, all in normal flow, each
+// forced to the same line-height regardless of font — fixes the box's
+// width to the widest word and its height to exactly one line, so the rest
+// of the sentence never shifts. The real, visible words sit in an
+// absolutely-positioned track on top, clipped to that box and translated
+// vertically to bring the current word into view.
 export default function RotatingWord({
   words,
   intervalMs = 5000,
 }: RotatingWordProps) {
   const [index, setIndex] = useState(0);
-  const fadeDuration = 500;
+  const transitionMs = 500;
 
   useEffect(() => {
     const advance = setInterval(() => {
       setIndex((current) => (current + 1) % words.length);
-    }, intervalMs + fadeDuration);
+    }, intervalMs + transitionMs);
 
     return () => clearInterval(advance);
   }, [intervalMs, words.length]);
 
   return (
-    <span className="relative inline-grid items-baseline align-baseline text-left">
-      {words.map((word, i) => (
+    <span className="relative inline-grid align-baseline text-left leading-[1.2]">
+      {words.map((word) => (
         <span
-          key={word.text}
-          aria-hidden={i !== index}
-          className={`col-start-1 row-start-1 whitespace-nowrap transition-opacity ease-in-out ${
-            i === index ? "opacity-100" : "opacity-0"
-          } ${word.className ?? ""}`}
-          style={{ transitionDuration: `${fadeDuration}ms` }}
+          key={`${word.text}-sizer`}
+          aria-hidden
+          className={`invisible col-start-1 row-start-1 whitespace-nowrap leading-[1.2] ${word.className ?? ""}`}
         >
           {word.text}
         </span>
       ))}
+
+      <span className="absolute inset-0 overflow-hidden">
+        <span
+          className="flex flex-col transition-transform ease-in-out"
+          style={{
+            transitionDuration: `${transitionMs}ms`,
+            transform: `translateY(-${(index * 100) / words.length}%)`,
+          }}
+        >
+          {words.map((word, i) => (
+            <span
+              key={word.text}
+              aria-hidden={i !== index}
+              className={`whitespace-nowrap leading-[1.2] ${word.className ?? ""}`}
+            >
+              {word.text}
+            </span>
+          ))}
+        </span>
+      </span>
     </span>
   );
 }

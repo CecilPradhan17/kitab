@@ -95,7 +95,7 @@ export default function ProfilePage() {
       <ProfileHeader profile={profile} booksReadCount={books.length} isOwner={isOwner} />
 
       <section className="px-8 py-16 sm:px-16">
-        <header className="mb-12 flex flex-col items-center gap-2">
+        <header className="mb-16 flex flex-col items-center gap-2">
           <p className="font-serif text-xl tracking-wide text-muted animate-header-label">
             {isOwner ? "YOUR" : "THE"}
           </p>

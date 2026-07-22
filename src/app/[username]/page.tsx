@@ -70,13 +70,13 @@ export default function ProfilePage() {
         <ProfileHeaderSkeleton />
 
         <section className="px-8 py-16 sm:px-16">
-          <header className="mb-12">
-            <p className="font-sans text-[0.65rem] uppercase tracking-[0.25em] text-accent">
-              The Library
+          <header className="mb-12 flex justify-center">
+            <p
+              className="font-logo text-3xl tracking-[0.5em] text-white"
+              style={{ paddingLeft: "0.5em" /* offset the trailing letter-spacing */ }}
+            >
+              KITAB
             </p>
-            <h2 className="mt-2 font-serif text-4xl text-foreground">
-              Books, read.
-            </h2>
           </header>
 
           <div className="grid grid-cols-2 justify-items-center gap-x-8 gap-y-12 sm:mx-[10vw] sm:grid-cols-4 [&>*]:w-full [&>*]:max-w-40">
@@ -104,13 +104,19 @@ export default function ProfilePage() {
       <ProfileHeader profile={profile} booksReadCount={books.length} isOwner={isOwner} />
 
       <section className="px-8 py-16 sm:px-16">
-        <header className="mb-12">
-          <p className="font-sans text-[0.65rem] uppercase tracking-[0.25em] text-accent">
-            The Library
+        <header className="mb-12 flex flex-col items-center gap-2">
+          <p className="font-serif text-xl tracking-wide text-muted">
+            {isOwner ? "YOUR" : "THE"}
           </p>
-          <h2 className="mt-2 font-serif text-4xl text-foreground">
-            Books, read.
-          </h2>
+          <p
+            className="font-logo text-4xl tracking-[0.5em] text-white"
+            style={{ paddingLeft: "0.5em" /* offset the trailing letter-spacing */ }}
+          >
+            KITAB
+          </p>
+          <p className="font-serif text-xl tracking-wide text-muted">
+            COLLECTION
+          </p>
         </header>
 
         <LibraryView

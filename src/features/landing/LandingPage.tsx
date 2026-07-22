@@ -20,7 +20,15 @@ export default function LandingPage() {
         Your digital{" "}
         <RotatingWord
           words={[
-            { text: "Kitab", className: "font-logo uppercase tracking-wide text-accent" },
+            {
+              text: "Kitab",
+              // Cormorant Garamond's baseline sits higher within a shared
+              // line-height than Playfair's (different ascent/descent
+              // proportions), so it needs a manual nudge down to visually
+              // land on the same baseline as the rest of the sentence.
+              className:
+                "relative top-[0.08em] font-logo uppercase tracking-wide text-accent",
+            },
             { text: "Book", className: "text-foreground" },
           ]}
         />{" "}

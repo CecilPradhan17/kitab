@@ -1,19 +1,30 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getStoredUser } from "@/lib/auth";
+import LandingPage from "@/features/landing/LandingPage";
 
-// "/" is not a real page — it's a redirect based on local auth state.
-// Logged-in users land on their own /[username] library; everyone else
-// goes to /login. No UI of its own.
+// "/" serves two audiences based on local auth state: logged-in users are
+// redirected straight to their own /[username] library, and logged-out
+// visitors see the marketing landing page instead of being bounced to
+// /login.
 export default function Home() {
   const router = useRouter();
+  const [showLanding, setShowLanding] = useState(false);
 
   useEffect(() => {
     const user = getStoredUser();
-    router.replace(user ? `/${user.username}` : "/login");
+    if (user) {
+      router.replace(`/${user.username}`);
+    } else {
+      setShowLanding(true);
+    }
   }, [router]);
 
-  return null;
+  // Render nothing until the auth check resolves, so a logged-in user never
+  // sees a flash of the landing page mid-redirect.
+  if (!showLanding) return null;
+
+  return <LandingPage />;
 }

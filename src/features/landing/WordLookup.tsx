@@ -1,7 +1,14 @@
 "use client";
 
 // A Google-dictionary-style lookup card for the word "Kitab", shown below
-// the hero headline: headword + speaker icon, phonetic spelling, meaning.
+// the hero headline: headword + speaker icon, then "noun · /phonetic/",
+// then two numbered senses (the literal meaning, and a wink at what this
+// app actually is) — left-aligned like a real dictionary entry. Reuses the
+// app's own dark panel convention (bg-[#0f0f0f] + border-white/10, same as
+// BookDetailModal/EditProfileModal) rather than inventing new card colors,
+// so text stays on the normal foreground/muted tokens throughout — only the
+// speaker button's blue is a deliberate, scoped exception, kept regardless
+// of surrounding background since it's Google's own brand color.
 // The speaker plays a real recorded pronunciation clip rather than browser
 // text-to-speech (an English TTS voice would badly mangle a Nepali/Arabic/
 // Urdu/Hindi word) — drop three takes at the paths below for the button to
@@ -22,7 +29,7 @@ export default function WordLookup() {
   }
 
   return (
-    <div className="mt-10 flex flex-col items-center gap-2">
+    <div className="mt-20 flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-[#0f0f0f] px-8 py-6 text-left">
       <div className="flex items-center gap-2.5">
         <span className="font-serif text-2xl text-foreground">Kitab</span>
         <button
@@ -30,18 +37,29 @@ export default function WordLookup() {
           onClick={playPronunciation}
           aria-label="Play pronunciation"
           title="Play pronunciation"
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-[#E8F0FE] text-[#444746] outline-none transition-colors hover:bg-[#D3E3FD] focus-visible:ring-2 focus-visible:ring-[#4285F4]"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4285F4] text-white outline-none transition-colors hover:bg-[#3367D6] focus-visible:ring-2 focus-visible:ring-[#4285F4] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f0f]"
         >
           <SpeakerIcon />
         </button>
       </div>
 
-      <p className="font-sans text-sm text-muted">/kɪˈtɑːb/</p>
-
-      <p className="max-w-xs font-sans text-sm text-foreground/80">
-        <span className="italic text-muted">noun</span> · Nepali, Arabic,
-        Urdu, Hindi — a book.
+      <p className="font-sans text-sm text-muted">
+        <span className="italic">noun</span> · /kɪˈtɑːb/
       </p>
+
+      <ol className="mt-1 flex max-w-xs flex-col gap-1.5 font-sans text-sm text-foreground/80">
+        <li className="flex gap-2">
+          <span className="text-muted">1.</span>
+          <span>
+            Something which is written, such as a book. (in Nepali, Arabic,
+            and Hindi)
+          </span>
+        </li>
+        <li className="flex gap-2">
+          <span className="text-muted">2.</span>
+          <span>In other cases, your favourite digital book tracking platform.</span>
+        </li>
+      </ol>
     </div>
   );
 }

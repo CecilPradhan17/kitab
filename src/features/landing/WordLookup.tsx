@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef } from "react";
+
 // A Google-dictionary-style lookup card for the word "Kitab", shown below
 // the hero headline: headword + speaker icon, then "noun · /phonetic/",
 // then two numbered senses (the literal meaning, and a wink at what this
@@ -12,7 +14,8 @@
 // The speaker plays a real recorded pronunciation clip rather than browser
 // text-to-speech (an English TTS voice would badly mangle a Nepali/Arabic/
 // Urdu/Hindi word) — drop three takes at the paths below for the button to
-// work; play() rejects silently until they exist.
+// work; play() rejects silently until they exist. Clips cycle in order
+// (1, 2, 3, 1, ...) rather than at random, so repeat plays feel consistent.
 const PRONUNCIATION_CLIPS = [
   "/audio/kitab-1.mp3",
   "/audio/kitab-2.mp3",
@@ -20,12 +23,19 @@ const PRONUNCIATION_CLIPS = [
 ];
 
 export default function WordLookup() {
+  const nextClipIndex = useRef(0);
+  const currentAudio = useRef<HTMLAudioElement | null>(null);
+
   function playPronunciation() {
-    const clip =
-      PRONUNCIATION_CLIPS[
-        Math.floor(Math.random() * PRONUNCIATION_CLIPS.length)
-      ];
-    new Audio(clip).play().catch(() => {});
+    currentAudio.current?.pause();
+
+    const clip = PRONUNCIATION_CLIPS[nextClipIndex.current];
+    nextClipIndex.current =
+      (nextClipIndex.current + 1) % PRONUNCIATION_CLIPS.length;
+
+    const audio = new Audio(clip);
+    currentAudio.current = audio;
+    audio.play().catch(() => {});
   }
 
   return (

@@ -30,7 +30,7 @@ export default function WordLookup() {
           onClick={playPronunciation}
           aria-label="Play pronunciation"
           title="Play pronunciation"
-          className="flex h-8 w-8 items-center justify-center rounded-full text-accent outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-[#4285F4] outline-none transition-colors hover:text-[#5a95f5] focus-visible:ring-2 focus-visible:ring-[#4285F4]"
         >
           <SpeakerIcon />
         </button>
@@ -46,24 +46,15 @@ export default function WordLookup() {
   );
 }
 
-// Hand-rolled to match BookDetailModal's icon pattern (stroke-based, no
-// icon library) rather than pulling in a new dependency for one glyph.
+// Google's own "volume_up" Material Symbols glyph (same shape Search's
+// dictionary card and Translate use for pronunciation) — reproduced by path
+// rather than pulling in an icon library for one glyph, matching how
+// BookDetailModal hand-rolls its icons too. Filled, not stroked, since
+// Material icons are solid shapes.
 function SpeakerIcon() {
   return (
-    <svg
-      aria-hidden
-      viewBox="0 0 20 20"
-      width="18"
-      height="18"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 8v4h3l4 3V5L6 8H3Z" />
-      <path d="M13 7.5a3 3 0 0 1 0 5" />
-      <path d="M15.3 5.5a6 6 0 0 1 0 9" />
+    <svg aria-hidden viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+      <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
     </svg>
   );
 }

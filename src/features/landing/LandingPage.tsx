@@ -1,5 +1,6 @@
 import Link from "next/link";
 import RotatingWord from "./RotatingWord";
+import WordLookup from "./WordLookup";
 
 // The marketing landing page shown to logged-out visitors at "/". Purely
 // presentational — the auth check and the redirect for logged-in users both
@@ -45,6 +46,8 @@ export default function LandingPage() {
         />{" "}
         collection.
       </h1>
+
+      <WordLookup />
     </main>
   );
 }

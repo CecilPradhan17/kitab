@@ -4,11 +4,21 @@
 // the hero headline: headword + speaker icon, phonetic spelling, meaning.
 // The speaker plays a real recorded pronunciation clip rather than browser
 // text-to-speech (an English TTS voice would badly mangle a Nepali/Arabic/
-// Urdu/Hindi word) — drop the audio file at public/audio/kitab.mp3 for the
-// button to work; play() rejects silently until it exists.
+// Urdu/Hindi word) — drop three takes at the paths below for the button to
+// work; play() rejects silently until they exist.
+const PRONUNCIATION_CLIPS = [
+  "/audio/kitab-1.mp3",
+  "/audio/kitab-2.mp3",
+  "/audio/kitab-3.mp3",
+];
+
 export default function WordLookup() {
   function playPronunciation() {
-    new Audio("/audio/kitab.mp3").play().catch(() => {});
+    const clip =
+      PRONUNCIATION_CLIPS[
+        Math.floor(Math.random() * PRONUNCIATION_CLIPS.length)
+      ];
+    new Audio(clip).play().catch(() => {});
   }
 
   return (

@@ -24,10 +24,10 @@ interface RotatingWordProps {
 // vertically to bring the current word into view.
 export default function RotatingWord({
   words,
-  intervalMs = 5000,
+  intervalMs = 3000,
 }: RotatingWordProps) {
   const [index, setIndex] = useState(0);
-  const transitionMs = 500;
+  const transitionMs = 700;
 
   useEffect(() => {
     const advance = setInterval(() => {

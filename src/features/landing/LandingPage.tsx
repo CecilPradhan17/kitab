@@ -11,12 +11,23 @@ import RotatingWord from "./RotatingWord";
 // deliberately left for a later pass rather than bolted on here.
 export default function LandingPage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
-      <p className="font-logo text-sm uppercase tracking-[0.4em] text-accent">
-        Kitab
-      </p>
+    <main className="relative flex min-h-screen flex-col items-center justify-center px-6 text-center">
+      <div className="absolute right-5 top-5 flex items-center gap-4 sm:right-8 sm:top-8">
+        <Link
+          href="/login"
+          className="font-sans text-sm text-muted transition-colors hover:text-foreground"
+        >
+          Sign in
+        </Link>
+        <Link
+          href="/register"
+          className="rounded bg-accent px-5 py-2 font-sans text-xs font-semibold uppercase tracking-[0.2em] text-background transition-colors hover:bg-accent/90"
+        >
+          Create your library
+        </Link>
+      </div>
 
-      <h1 className="mt-6 max-w-2xl font-serif text-4xl leading-tight text-foreground sm:text-6xl">
+      <h1 className="max-w-2xl font-serif text-4xl leading-tight text-foreground sm:text-6xl">
         Your digital{" "}
         <RotatingWord
           words={[
@@ -34,26 +45,6 @@ export default function LandingPage() {
         />{" "}
         collection.
       </h1>
-
-      <p className="mt-6 max-w-md font-sans text-sm text-muted sm:text-base">
-        Track every book you finish, reveal it as a 3D object on your shelf,
-        and share the story when you turn the last page.
-      </p>
-
-      <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
-        <Link
-          href="/register"
-          className="w-full rounded bg-accent px-8 py-3.5 text-center font-sans text-xs font-semibold uppercase tracking-[0.2em] text-background transition-colors hover:bg-accent/90 sm:w-auto"
-        >
-          Create your library
-        </Link>
-        <Link
-          href="/login"
-          className="font-sans text-sm text-muted transition-colors hover:text-foreground"
-        >
-          Sign in
-        </Link>
-      </div>
     </main>
   );
 }

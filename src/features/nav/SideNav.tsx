@@ -54,7 +54,7 @@ export default function SideNav() {
     clearStoredUser();
     setOpen(false);
     setLoggedIn(false);
-    router.replace("/login");
+    router.replace("/");
   }
 
   return (

@@ -1,19 +1,22 @@
 import Link from "next/link";
 import RotatingWord from "./RotatingWord";
 import WordLookup from "./WordLookup";
+import ScrollHero from "./ScrollHero";
 
 // The marketing landing page shown to logged-out visitors at "/". Purely
 // presentational — the auth check and the redirect for logged-in users both
 // live in app/page.tsx, not here.
 //
-// Basics only for now: headline + sign-up/sign-in CTAs. A live 3D book
-// render is the planned hero centerpiece (see CLAUDE.md on visual quality
-// being the project's main unproven risk) but is deliberately left for a
-// later pass rather than bolted on here.
+// ScrollHero is a full-bleed scroll-driven section (scattered devices ->
+// blackout -> organized Kitab branding) that sits below the original
+// headline + WordLookup card, which stays pinned at the very top of the
+// page as visitors land on it. A live 3D book render remains a planned
+// future addition on top of this (see CLAUDE.md on visual quality being
+// the project's main unproven risk).
 export default function LandingPage() {
   return (
     <main className="relative flex min-h-screen flex-col items-center px-6 pt-[22vh] text-center">
-      <div className="absolute right-5 top-5 flex items-center gap-4 sm:right-8 sm:top-8">
+      <div className="absolute right-5 top-5 z-10 flex items-center gap-4 sm:right-8 sm:top-8">
         <Link
           href="/register"
           className="font-sans text-sm text-muted transition-colors hover:text-foreground"
@@ -48,6 +51,8 @@ export default function LandingPage() {
       </h1>
 
       <WordLookup />
+
+      <ScrollHero />
     </main>
   );
 }

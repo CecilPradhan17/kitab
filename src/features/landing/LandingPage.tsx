@@ -5,25 +5,25 @@ import RotatingWord from "./RotatingWord";
 // presentational — the auth check and the redirect for logged-in users both
 // live in app/page.tsx, not here.
 //
-// Basics only for now: wordmark, headline, one-line pitch, sign-up/sign-in
-// CTAs. A live 3D book render is the planned hero centerpiece (see CLAUDE.md
-// on visual quality being the project's main unproven risk) but is
-// deliberately left for a later pass rather than bolted on here.
+// Basics only for now: headline + sign-up/sign-in CTAs. A live 3D book
+// render is the planned hero centerpiece (see CLAUDE.md on visual quality
+// being the project's main unproven risk) but is deliberately left for a
+// later pass rather than bolted on here.
 export default function LandingPage() {
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center px-6 text-center">
+    <main className="relative flex min-h-screen flex-col items-center px-6 pt-[22vh] text-center">
       <div className="absolute right-5 top-5 flex items-center gap-4 sm:right-8 sm:top-8">
         <Link
-          href="/login"
+          href="/register"
           className="font-sans text-sm text-muted transition-colors hover:text-foreground"
         >
-          Sign in
+          Sign up
         </Link>
         <Link
-          href="/register"
+          href="/login"
           className="rounded bg-accent px-5 py-2 font-sans text-xs font-semibold uppercase tracking-[0.2em] text-background transition-colors hover:bg-accent/90"
         >
-          Create your library
+          Login
         </Link>
       </div>
 

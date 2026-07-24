@@ -1,7 +1,13 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import {
+  motion,
+  useMotionValue,
+  useReducedMotion,
+  useScroll,
+  useTransform,
+} from "framer-motion";
 import HeroPhaseScattered from "./HeroPhaseScattered";
 import HeroPhaseOrganized from "./HeroPhaseOrganized";
 
@@ -31,7 +37,9 @@ export default function ScrollHero() {
     offset: ["start start", "end end"],
   });
 
-  const scatteredOpacity = useTransform(scrollYProgress, [0, 0.4, 0.6], [0, 1, 0]);
+  // Phase 1's own elements (phone / e-reader / headline) each compute their
+  // staggered opacity from scrollYProgress internally — see
+  // HeroPhaseScattered. Only Phase 3 still fades as one shared layer.
   const organizedOpacity = useTransform(scrollYProgress, [0.6, 1], [0, 1]);
   const scatteredPointerEvents = useTransform(scrollYProgress, (v) =>
     v < 0.5 ? "auto" : "none",
@@ -39,6 +47,13 @@ export default function ScrollHero() {
   const organizedPointerEvents = useTransform(scrollYProgress, (v) =>
     v < 0.5 ? "none" : "auto",
   );
+  // Reduced-motion's HeroPhaseScattered still needs a scrollYProgress value
+  // for its internal per-element useTransform calls, but there's no
+  // pin-scrub to derive one from here — a fixed value past every element's
+  // fade-in breakpoint (see HeroPhaseScattered) holds them all at opacity 1,
+  // so the whole group fades in together via the wrapping whileInView below
+  // instead of staggering.
+  const settledProgress = useMotionValue(0.4);
 
   if (prefersReducedMotion) {
     return (
@@ -50,7 +65,7 @@ export default function ScrollHero() {
           viewport={{ once: true, amount: 0.4 }}
           transition={{ duration: 0.6 }}
         >
-          <HeroPhaseScattered />
+          <HeroPhaseScattered scrollYProgress={settledProgress} />
         </motion.div>
         <motion.div
           className="flex min-h-[70vh] items-center justify-center"
@@ -70,9 +85,9 @@ export default function ScrollHero() {
       <div className="sticky top-0 h-screen overflow-hidden">
         <motion.div
           className="absolute inset-0"
-          style={{ opacity: scatteredOpacity, pointerEvents: scatteredPointerEvents }}
+          style={{ pointerEvents: scatteredPointerEvents }}
         >
-          <HeroPhaseScattered />
+          <HeroPhaseScattered scrollYProgress={scrollYProgress} />
         </motion.div>
 
         <motion.div

@@ -1,6 +1,6 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion, type MotionStyle } from "framer-motion";
 
 interface FloatingDeviceProps {
   src: string;
@@ -17,6 +17,11 @@ interface FloatingDeviceProps {
   drift?: boolean;
   driftDurationS?: number;
   driftDelayS?: number;
+  /** Extra motion style merged in on top of rotate/filter below — used by
+      callers that drive this device's opacity from a scroll-linked
+      MotionValue (e.g. the staggered phone/e-reader reveal in
+      HeroPhaseScattered). Omit for a device that's just always shown. */
+  style?: MotionStyle;
 }
 
 // One device image (book / phone / e-reader), shared between the scattered
@@ -33,6 +38,7 @@ export default function FloatingDevice({
   drift = false,
   driftDurationS = 4,
   driftDelayS = 0,
+  style,
 }: FloatingDeviceProps) {
   const prefersReducedMotion = useReducedMotion();
   const shouldDrift = drift && !prefersReducedMotion;
@@ -45,6 +51,7 @@ export default function FloatingDevice({
       style={{
         rotate,
         filter: "drop-shadow(0 20px 30px rgba(0, 0, 0, 0.55))",
+        ...style,
       }}
       animate={
         shouldDrift

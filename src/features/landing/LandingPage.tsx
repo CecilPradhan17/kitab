@@ -7,12 +7,13 @@ import ScrollHero from "./ScrollHero";
 // presentational — the auth check and the redirect for logged-in users both
 // live in app/page.tsx, not here.
 //
-// ScrollHero is a full-bleed scroll-driven section (scattered devices ->
-// blackout -> organized Kitab branding) that sits below the original
-// headline + WordLookup card, which stays pinned at the very top of the
-// page as visitors land on it. A live 3D book render remains a planned
-// future addition on top of this (see CLAUDE.md on visual quality being
-// the project's main unproven risk).
+// ScrollHero is the full-bleed scroll-driven section below the headline +
+// WordLookup card: phone/e-reader/headline stagger in around a book that's
+// always present (no fade), so by the time the stagger finishes all four
+// are in view together, then a blackout leads into the organized Kitab
+// branding beat. A live 3D book render remains a planned future addition
+// on top of this (see CLAUDE.md on visual quality being the project's main
+// unproven risk).
 export default function LandingPage() {
   return (
     <main className="relative flex min-h-screen flex-col items-center px-6 pt-[22vh] text-center">

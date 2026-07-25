@@ -33,15 +33,15 @@ export default function LandingPage() {
         </Link>
       </div>
 
-      {/* GoldLampGlow's cone/dust are sized in fixed px (~700-750px of
-          natural falloff below the bar, independent of viewport height), so
-          this zone needs a matching fixed min-height - a vh-based or
-          tightly-wrapped box clips the light via overflow-hidden before its
-          own gradient/opacity ever reaches zero. The heading sits near the
-          top of the zone (mt-* below, not justify-end) so the remaining
-          height beneath it is unused by any element - just open space for
-          the glow to keep fading through on its way toward WordLookup. */}
-      <div className="relative flex min-h-[820px] w-full max-w-2xl flex-col items-center">
+      {/* GoldLampGlow's cone/dust reach ~650-700px of natural falloff below
+          the bar before its own gradient/opacity hits zero (independent of
+          viewport height, since the SVG's dimensions are fixed px, not
+          scaled to the container) - this zone's min-height only needs to
+          clear that point so overflow-hidden never clips the light before it
+          finishes fading on its own. WordLookup now lives inside this same
+          zone (not after it) so it sits under the still-fading tail of the
+          light instead of past it in plain black. */}
+      <div className="relative flex min-h-[760px] w-full max-w-2xl flex-col items-center">
         <GoldLampGlow />
 
         <h1 className="relative z-10 mt-36 font-serif text-4xl leading-tight text-foreground sm:mt-44 sm:text-6xl">
@@ -62,9 +62,11 @@ export default function LandingPage() {
           />{" "}
           collection.
         </h1>
-      </div>
 
-      <WordLookup />
+        <div className="relative z-10">
+          <WordLookup />
+        </div>
+      </div>
 
       <ScrollHero />
     </main>

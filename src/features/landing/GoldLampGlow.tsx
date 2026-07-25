@@ -155,9 +155,13 @@ export default function GoldLampGlow() {
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
+          {/* Front-loaded falloff (steep drop by 30%, long soft tail to 0)
+              instead of a near-linear fade - closer to how a real light
+              source dims with distance than an even gradient reads. */}
           <linearGradient id="coneFade" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#f6d989" stopOpacity="0.55" />
-            <stop offset="45%" stopColor="#e8b84b" stopOpacity="0.22" />
+            <stop offset="0%" stopColor="#f6d989" stopOpacity="0.6" />
+            <stop offset="30%" stopColor="#e8b84b" stopOpacity="0.25" />
+            <stop offset="60%" stopColor="#e8b84b" stopOpacity="0.08" />
             <stop offset="100%" stopColor="#e8b84b" stopOpacity="0" />
           </linearGradient>
           <filter id="softEdge" x="-50%" y="-50%" width="200%" height="200%">
@@ -168,9 +172,11 @@ export default function GoldLampGlow() {
             (340px, so ±170 from the shared center at local x=450) - it
             previously started at ±60, well inside the bar's own edges, so
             the light read as spilling from the middle of the bar rather
-            than the bar as a whole. */}
+            than the bar as a whole. Bottom edge widened further out
+            (±170 -> ±340, twice the top width) for a steeper slant/wider
+            spread than the original near-parallel sides. */}
         <polygon
-          points="280,0 620,0 710,560 190,560"
+          points="280,0 620,0 790,560 110,560"
           fill="url(#coneFade)"
           filter="url(#softEdge)"
         />

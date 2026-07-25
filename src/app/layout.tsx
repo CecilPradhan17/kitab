@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Inter, Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
 import SideNav from "@/features/nav/SideNav";
@@ -26,9 +26,36 @@ const cormorant = Cormorant_Garamond({
   display: "swap",
 });
 
+// No NEXT_PUBLIC_SITE_URL yet (app isn't deployed) - falls back to localhost
+// so metadataBase always resolves. Set NEXT_PUBLIC_SITE_URL to the real
+// domain once deployed, so absolute OG/Twitter image URLs point at prod.
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+const description =
+  "Track the books you've read as a beautifully rendered personal library - 3D book models, and shareable Instagram-style story cards for every book you finish.";
+
 export const metadata: Metadata = {
-  title: "Library",
-  description: "A personal library of books read.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: "Kitab",
+    template: "%s · Kitab",
+  },
+  description,
+  openGraph: {
+    type: "website",
+    siteName: "Kitab",
+    title: "Kitab",
+    description,
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Kitab",
+    description,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({

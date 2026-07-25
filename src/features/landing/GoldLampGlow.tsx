@@ -164,8 +164,13 @@ export default function GoldLampGlow() {
             <feGaussianBlur stdDeviation="26" />
           </filter>
         </defs>
+        {/* Top edge (280/620) matches .gold-bar's actual rendered width
+            (340px, so ±170 from the shared center at local x=450) - it
+            previously started at ±60, well inside the bar's own edges, so
+            the light read as spilling from the middle of the bar rather
+            than the bar as a whole. */}
         <polygon
-          points="390,0 510,0 640,560 260,560"
+          points="280,0 620,0 710,560 190,560"
           fill="url(#coneFade)"
           filter="url(#softEdge)"
         />

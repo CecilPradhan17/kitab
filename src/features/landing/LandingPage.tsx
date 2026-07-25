@@ -17,7 +17,7 @@ import GoldLampGlow from "./GoldLampGlow";
 // unproven risk).
 export default function LandingPage() {
   return (
-    <main className="relative flex min-h-screen flex-col items-center px-6 pt-[6vh] text-center">
+    <main className="relative flex min-h-screen flex-col items-center px-6 pt-[2vh] text-center">
       <div className="absolute right-5 top-5 z-10 flex items-center gap-4 sm:right-8 sm:top-8">
         <Link
           href="/register"
@@ -33,14 +33,18 @@ export default function LandingPage() {
         </Link>
       </div>
 
-      {/* Gives GoldLampGlow room above the heading to render its bar/cone/
-          dust in full (it's built for a spacious parent, not a tight wrap
-          around just the text) — the heading sits at the bottom of this
-          zone, lit from above. */}
-      <div className="relative flex min-h-[46vh] w-full max-w-2xl flex-col items-center justify-end">
+      {/* GoldLampGlow's cone/dust are sized in fixed px (~700-750px of
+          natural falloff below the bar, independent of viewport height), so
+          this zone needs a matching fixed min-height - a vh-based or
+          tightly-wrapped box clips the light via overflow-hidden before its
+          own gradient/opacity ever reaches zero. The heading sits near the
+          top of the zone (mt-* below, not justify-end) so the remaining
+          height beneath it is unused by any element - just open space for
+          the glow to keep fading through on its way toward WordLookup. */}
+      <div className="relative flex min-h-[820px] w-full max-w-2xl flex-col items-center">
         <GoldLampGlow />
 
-        <h1 className="relative z-10 font-serif text-4xl leading-tight text-foreground sm:text-6xl">
+        <h1 className="relative z-10 mt-36 font-serif text-4xl leading-tight text-foreground sm:mt-44 sm:text-6xl">
           Your digital{" "}
           <RotatingWord
             words={[

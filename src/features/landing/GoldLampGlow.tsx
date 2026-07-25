@@ -38,10 +38,8 @@ export default function GoldLampGlow() {
       const mote = document.createElement("div");
       mote.className = "gold-mote";
 
-      const containerWidth = container.clientWidth || window.innerWidth;
-      const centerX = containerWidth / 2;
       const spread = 220 + Math.random() * 100;
-      const startX = centerX + (Math.random() * spread * 2 - spread);
+      const offsetX = Math.random() * spread * 2 - spread;
 
       const duration = 20 + Math.random() * 16; // 20s - 36s
       const delay = -Math.random() * duration; // stagger + mid-fall starts
@@ -79,7 +77,12 @@ export default function GoldLampGlow() {
         sheet.cssRules.length
       );
 
-      mote.style.left = `${startX}px`;
+      // 50% + a fixed px jitter (not an absolute px position derived from
+      // container.clientWidth) so motes stay centered under the light if
+      // the container's own width/position ever changes after mount - a
+      // one-time px calculation would otherwise go stale, as it just did
+      // when the container widened to w-screen.
+      mote.style.left = `calc(50% + ${offsetX.toFixed(1)}px)`;
       mote.style.top = "13%";
       mote.style.width = `${size}px`;
       mote.style.height = `${size}px`;
@@ -177,13 +180,13 @@ export default function GoldLampGlow() {
         {/* Top edge (280/620) matches .gold-bar's actual rendered width
             (340px, so ±170 from the shared center at local x=450) - the
             light should start exactly at the bar's edges. Bottom edge
-            widened well past the svg's own 0-900 viewBox (±170 -> ±520,
-            roughly 3x the top width) for a much steeper slant/wider flare;
+            widened well past the svg's own 0-900 viewBox (±170 -> ±660,
+            roughly 4x the top width) for a very steep slant/wide flare;
             .cone-svg has overflow: visible so points outside its nominal
-            box still render, and the root is now full-viewport-width (see
+            box still render, and the root is full-viewport-width (see
             above) so nothing clips them before the gradient fades to 0. */}
         <polygon
-          points="280,0 620,0 970,560 -70,560"
+          points="280,0 620,0 1110,560 -210,560"
           fill="url(#coneFade)"
           filter="url(#softEdge)"
         />

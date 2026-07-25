@@ -96,7 +96,13 @@ export default function GoldLampGlow() {
   }, []);
 
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+    // w-screen (not inset-0) because the flare below is now wide enough to
+    // exceed this component's own parent (capped at max-w-2xl for text
+    // readability) - clipping against that narrower box would cut the light
+    // off hard well before its gradient fades to 0. Centering on 100vw
+    // instead means it can only ever get clipped by the viewport edge
+    // itself, which reads as the glow bleeding off-screen, not a stray box.
+    <div className="pointer-events-none absolute left-1/2 top-0 h-full w-screen -translate-x-1/2 overflow-hidden">
       <style jsx>{`
         .gold-bar {
           position: absolute;
@@ -169,14 +175,15 @@ export default function GoldLampGlow() {
           </filter>
         </defs>
         {/* Top edge (280/620) matches .gold-bar's actual rendered width
-            (340px, so ±170 from the shared center at local x=450) - it
-            previously started at ±60, well inside the bar's own edges, so
-            the light read as spilling from the middle of the bar rather
-            than the bar as a whole. Bottom edge widened further out
-            (±170 -> ±340, twice the top width) for a steeper slant/wider
-            spread than the original near-parallel sides. */}
+            (340px, so ±170 from the shared center at local x=450) - the
+            light should start exactly at the bar's edges. Bottom edge
+            widened well past the svg's own 0-900 viewBox (±170 -> ±520,
+            roughly 3x the top width) for a much steeper slant/wider flare;
+            .cone-svg has overflow: visible so points outside its nominal
+            box still render, and the root is now full-viewport-width (see
+            above) so nothing clips them before the gradient fades to 0. */}
         <polygon
-          points="280,0 620,0 790,560 110,560"
+          points="280,0 620,0 970,560 -70,560"
           fill="url(#coneFade)"
           filter="url(#softEdge)"
         />

@@ -180,13 +180,14 @@ export default function GoldLampGlow() {
         {/* Top edge (280/620) matches .gold-bar's actual rendered width
             (340px, so ±170 from the shared center at local x=450) - the
             light should start exactly at the bar's edges. Bottom edge
-            widened well past the svg's own 0-900 viewBox (±170 -> ±660,
-            roughly 4x the top width) for a very steep slant/wide flare;
+            widened well past the svg's own 0-900 viewBox (±170 -> ±820,
+            nearly 5x the top width) for a very steep slant/wide flare;
             .cone-svg has overflow: visible so points outside its nominal
             box still render, and the root is full-viewport-width (see
-            above) so nothing clips them before the gradient fades to 0. */}
+            above) so nothing clips them before the gradient fades to 0 -
+            on most desktop widths this now reaches edge to edge. */}
         <polygon
-          points="280,0 620,0 1110,560 -210,560"
+          points="280,0 620,0 1270,560 -370,560"
           fill="url(#coneFade)"
           filter="url(#softEdge)"
         />

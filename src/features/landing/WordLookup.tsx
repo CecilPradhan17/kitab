@@ -39,7 +39,7 @@ export default function WordLookup() {
   }
 
   return (
-    <div className="mt-20 flex flex-col items-start gap-2 rounded-2xl border border-white/10 bg-[#0f0f0f] px-8 py-6 text-left">
+    <div className="mt-20 flex flex-col items-start gap-2 rounded-2xl border border-[#e8b84b]/20 bg-[#0f0f0f] px-8 py-6 text-left shadow-[0_0_16px_2px_rgba(232,184,75,0.15),0_0_40px_8px_rgba(232,184,75,0.08)]">
       <div className="flex items-center gap-2.5">
         <span className="font-serif text-2xl text-foreground">Kitab</span>
         <button

@@ -106,16 +106,10 @@ export default function GoldLampGlow() {
     // instead means it can only ever get clipped by the viewport edge
     // itself, which reads as the glow bleeding off-screen, not a stray box.
     //
-    // clip-path hides everything above the bar's own top edge (12%, matching
-    // .gold-bar/.cone-svg's `top: 12%` below) - .gold-bar's box-shadow is
-    // symmetric and would otherwise bloom upward past the bar just as much
-    // as it spills downward. The bar itself sits flush with the clip line
-    // (its box starts at 12%), so it stays fully visible; only the upward
-    // half of its halo, and anything else above that line, gets clipped.
-    <div
-      className="pointer-events-none absolute left-1/2 top-0 h-full w-screen -translate-x-1/2 overflow-hidden"
-      style={{ clipPath: "inset(12% 0 0 0)" }}
-    >
+    // No clip-path here (removed after trying a hard cutoff above the bar) -
+    // .gold-bar's own box-shadow bleeding a little above the line, fainter
+    // than the cone below, is the intended look, not a bug to clip away.
+    <div className="pointer-events-none absolute left-1/2 top-0 h-full w-screen -translate-x-1/2 overflow-hidden">
       <style jsx>{`
         .gold-bar {
           position: absolute;
@@ -187,17 +181,15 @@ export default function GoldLampGlow() {
             <feGaussianBlur stdDeviation="26" />
           </filter>
         </defs>
-        {/* Top edge (280/620) matches .gold-bar's actual rendered width
-            (340px, so ±170 from the shared center at local x=450) - the
-            light should start exactly at the bar's edges. Bottom edge
-            widened well past the svg's own 0-900 viewBox (±170 -> ±820,
-            nearly 5x the top width) for a very steep slant/wide flare;
-            .cone-svg has overflow: visible so points outside its nominal
-            box still render, and the root is full-viewport-width (see
-            above) so nothing clips them before the gradient fades to 0 -
-            on most desktop widths this now reaches edge to edge. */}
+        {/* Top edge (220/680, ±230) overhangs .gold-bar's own edges (±170)
+            by 60px each side, so the glow softly fades past the ends of the
+            bar itself (blurred by the filter below) instead of stopping in
+            a hard vertex exactly at the bar's width. Bottom edge (±420) is
+            a gentler ~1.8x taper from the top - previously ±820 (~5x),
+            which read as the light being bigger than the lamp rather than
+            a contained beam coming from it. */}
         <polygon
-          points="280,0 620,0 1270,560 -370,560"
+          points="220,0 680,0 870,560 30,560"
           fill="url(#coneFade)"
           filter="url(#softEdge)"
         />

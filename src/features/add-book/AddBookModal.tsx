@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import FocusTrap from "focus-trap-react";
+import FocusGuard from "@/features/a11y/FocusGuard";
 import {
   addBook,
   searchBooks,
@@ -293,6 +294,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
         onClick={(event) => event.stopPropagation()}
         className="relative flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80"
       >
+        <FocusGuard position="first" />
         {/* Close affordance */}
         <button
           type="button"
@@ -623,6 +625,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
             </div>
           </div>
         )}
+        <FocusGuard position="last" />
       </div>
       </FocusTrap>
     </div>

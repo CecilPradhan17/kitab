@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import FocusTrap from "focus-trap-react";
+import FocusGuard from "@/features/a11y/FocusGuard";
 import {
   clearStoredToken,
   clearStoredUser,
@@ -94,6 +95,7 @@ export default function SideNav() {
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
+        <FocusGuard position="first" />
         <button
           type="button"
           onClick={() => setOpen(false)}
@@ -118,6 +120,7 @@ export default function SideNav() {
         >
           Log out
         </button>
+        <FocusGuard position="last" />
       </nav>
       </FocusTrap>
     </>

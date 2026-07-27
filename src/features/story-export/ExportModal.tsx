@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import FocusTrap from "focus-trap-react";
+import FocusGuard from "@/features/a11y/FocusGuard";
 import type { Book } from "@/features/library/mockBooks";
 import type { Profile } from "@/features/profile/types";
 import ExportCardPanel from "./ExportCardPanel";
@@ -56,6 +57,7 @@ export default function ExportModal({ book, profile, onClose }: ExportModalProps
           onClick={(event) => event.stopPropagation()}
           className="relative flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80"
         >
+          <FocusGuard position="first" />
           <button
             type="button"
             onClick={onClose}
@@ -72,6 +74,7 @@ export default function ExportModal({ book, profile, onClose }: ExportModalProps
           </h2>
 
           <ExportCardPanel key={book.id} book={book} profile={profile} />
+          <FocusGuard position="last" />
         </div>
       </FocusTrap>
     </div>

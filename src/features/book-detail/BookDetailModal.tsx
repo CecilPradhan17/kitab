@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import FocusTrap from "focus-trap-react";
+import FocusGuard from "@/features/a11y/FocusGuard";
 import type { Book } from "@/features/library/mockBooks";
 import type { Profile } from "@/features/profile/types";
 import BookDetailPanel from "./BookDetailPanel";
@@ -68,6 +69,7 @@ export default function BookDetailModal({
           onClick={(event) => event.stopPropagation()}
           className="relative flex w-full max-w-3xl max-h-full flex-col overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80 sm:p-12"
         >
+          <FocusGuard position="first" />
           {/* Close affordance — outside BookDetailPanel on purpose: it's modal
               chrome, not book content, so it's clickable immediately rather
               than waiting on the scene. */}
@@ -92,6 +94,7 @@ export default function BookDetailModal({
             onBookUpdated={onBookUpdated}
             onBookDeleted={onBookDeleted}
           />
+          <FocusGuard position="last" />
         </div>
       </FocusTrap>
     </div>

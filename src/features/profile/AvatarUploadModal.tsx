@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import FocusTrap from "focus-trap-react";
+import FocusGuard from "@/features/a11y/FocusGuard";
 import type { Profile } from "./types";
 import { requestAvatarUpload, uploadAvatarFile, confirmAvatarUpload } from "./profileApi";
 import { getStoredToken } from "@/lib/auth";
@@ -129,6 +130,7 @@ export default function AvatarUploadModal({
         onClick={(event) => event.stopPropagation()}
         className="relative flex w-full max-w-sm flex-col items-center rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80"
       >
+        <FocusGuard position="first" />
         <button
           type="button"
           onClick={onClose}
@@ -191,6 +193,7 @@ export default function AvatarUploadModal({
         >
           {uploading ? "Uploading…" : "Choose photo"}
         </button>
+        <FocusGuard position="last" />
       </div>
       </FocusTrap>
     </div>

@@ -96,29 +96,31 @@ export default function ProfilePage() {
 
       <section className="px-8 py-16 sm:px-16">
         <header className="mb-16 flex flex-col items-center gap-2">
-          <p className="font-serif text-xl tracking-wide text-muted animate-header-label">
+          {/* Real accessible heading - the visual triptych below is a
+              three-part animated presentation of this same text, not
+              separate content, so it's marked aria-hidden and this carries
+              the actual name. Without this, heading navigation jumped from
+              ProfileHeader's h1 straight to each BookCard's h3. */}
+          <h2 className="sr-only">
+            {isOwner ? "Your Kitab Collection" : "The Kitab Collection"}
+          </h2>
+          <p aria-hidden className="font-serif text-xl tracking-wide text-muted animate-header-label">
             {isOwner ? "YOUR" : "THE"}
           </p>
-          <div className="relative flex w-full items-center justify-center">
+          <div aria-hidden className="relative flex w-full items-center justify-center">
             {/* -left-8/sm:-left-16 exactly cancels the section's own
                 px-8/sm:px-16 padding, so the span's outer edge lands on the
                 true screen edge instead of just this row's edge. */}
-            <span
-              aria-hidden
-              className="absolute -left-8 right-[calc(50%+8rem)] h-px origin-left animate-line-draw bg-white sm:-left-16"
-            />
+            <span className="absolute -left-8 right-[calc(50%+8rem)] h-px origin-left animate-line-draw bg-white sm:-left-16" />
             <p
               className="font-logo text-4xl tracking-[0.5em] text-white"
               style={{ paddingLeft: "0.5em" /* offset the trailing letter-spacing */ }}
             >
               KITAB
             </p>
-            <span
-              aria-hidden
-              className="absolute -right-8 left-[calc(50%+8rem)] h-px origin-right animate-line-draw bg-white sm:-right-16"
-            />
+            <span className="absolute -right-8 left-[calc(50%+8rem)] h-px origin-right animate-line-draw bg-white sm:-right-16" />
           </div>
-          <p className="font-serif text-xl tracking-wide text-muted animate-header-label">
+          <p aria-hidden className="font-serif text-xl tracking-wide text-muted animate-header-label">
             COLLECTION
           </p>
         </header>

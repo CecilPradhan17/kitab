@@ -116,7 +116,7 @@ export default function GoldLampGlow() {
           top: 12%;
           left: 50%;
           transform: translateX(-50%);
-          width: 340px;
+          width: 380px;
           height: 3px;
           border-radius: 2px;
           background: linear-gradient(
@@ -148,7 +148,7 @@ export default function GoldLampGlow() {
           left: 50%;
           transform: translateX(-50%);
           width: 900px;
-          height: 640px;
+          height: 700px;
           overflow: visible;
         }
 
@@ -164,7 +164,7 @@ export default function GoldLampGlow() {
 
       <svg
         className="cone-svg"
-        viewBox="0 0 900 640"
+        viewBox="0 0 900 700"
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
@@ -180,16 +180,40 @@ export default function GoldLampGlow() {
           <filter id="softEdge" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="26" />
           </filter>
+          {/* Fainter, much-more-blurred copy of the same gradient for the
+              outer layer below - the inner cone's own edge (still a real
+              polygon, just blurred by softEdge) reads as a "cutoff" rather
+              than a contrasting line because this second, wider, softer
+              layer keeps the light trailing off naturally past it instead
+              of the inner cone's edge being the abrupt end of all light. */}
+          <linearGradient id="coneFadeOuter" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#f6d989" stopOpacity="0.28" />
+            <stop offset="30%" stopColor="#e8b84b" stopOpacity="0.12" />
+            <stop offset="60%" stopColor="#e8b84b" stopOpacity="0.04" />
+            <stop offset="100%" stopColor="#e8b84b" stopOpacity="0" />
+          </linearGradient>
+          <filter id="softEdgeWide" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="55" />
+          </filter>
         </defs>
         {/* Top edge (220/680, ±230) overhangs .gold-bar's own edges (±170)
             by 60px each side, so the glow softly fades past the ends of the
-            bar itself (blurred by the filter below) instead of stopping in
-            a hard vertex exactly at the bar's width. Bottom edge (±420) is
-            a gentler ~1.8x taper from the top - previously ±820 (~5x),
-            which read as the light being bigger than the lamp rather than
-            a contained beam coming from it. */}
+            bar itself instead of stopping in a hard vertex flush with the
+            bar's width. Bottom edge back to ±820 (~3.6x the top width).
+            The outer polygon is the same shape scaled up ~1.35x with a
+            fainter fill and a much wider blur, drawn first (behind) so it
+            extends past the inner cone's edges - see coneFadeOuter above.
+            Bottom y raised 560 -> 660 (both polygons, same x) to reach a
+            bit further down - the gradients are objectBoundingBox-relative
+            so the same front-loaded-then-soft-tail fade just stretches over
+            the extra distance instead of needing new stops. */}
         <polygon
-          points="220,0 680,0 870,560 30,560"
+          points="140,0 760,0 1557,660 -657,660"
+          fill="url(#coneFadeOuter)"
+          filter="url(#softEdgeWide)"
+        />
+        <polygon
+          points="220,0 680,0 1270,660 -370,660"
           fill="url(#coneFade)"
           filter="url(#softEdge)"
         />

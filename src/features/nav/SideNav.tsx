@@ -86,6 +86,11 @@ export default function SideNav() {
           translate-x + inert) rather than unmounting, so the trap needs an
           explicit active prop instead of relying on mount/unmount.
           escapeDeactivates: false - Escape is already handled above. */}
+      {/* Guards only render while open (unlike the modals' guards, which can
+          rely on their whole modal being unmounted when closed) - otherwise
+          they'd sit outside nav's inert scoping and stay tabbable even with
+          the drawer closed. */}
+      {open && <FocusGuard position="first" />}
       <FocusTrap active={open} focusTrapOptions={{ escapeDeactivates: false }}>
       <nav
         id="side-nav"
@@ -95,7 +100,6 @@ export default function SideNav() {
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <FocusGuard position="first" />
         <button
           type="button"
           onClick={() => setOpen(false)}
@@ -120,9 +124,9 @@ export default function SideNav() {
         >
           Log out
         </button>
-        <FocusGuard position="last" />
       </nav>
       </FocusTrap>
+      {open && <FocusGuard position="last" />}
     </>
   );
 }

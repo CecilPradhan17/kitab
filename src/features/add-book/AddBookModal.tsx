@@ -289,12 +289,12 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
           set initial focus would fight that and land on the Close button
           instead. escapeDeactivates: false - Escape is already handled by
           handleDismiss above. */}
+      <FocusGuard position="first" />
       <FocusTrap focusTrapOptions={{ initialFocus: false, escapeDeactivates: false }}>
       <div
         onClick={(event) => event.stopPropagation()}
         className="relative flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80"
       >
-        <FocusGuard position="first" />
         {/* Close affordance */}
         <button
           type="button"
@@ -625,9 +625,9 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
             </div>
           </div>
         )}
-        <FocusGuard position="last" />
       </div>
       </FocusTrap>
+      <FocusGuard position="last" />
     </div>
   );
 }

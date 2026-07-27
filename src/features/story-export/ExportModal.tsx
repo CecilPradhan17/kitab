@@ -52,12 +52,12 @@ export default function ExportModal({ book, profile, onClose }: ExportModalProps
           trigger on close. This modal can be stacked on top of
           BookDetailModal's own trap - focus-trap's internal trap stack
           pauses the lower trap while this one is active. */}
+      <FocusGuard position="first" />
       <FocusTrap focusTrapOptions={{ escapeDeactivates: false }}>
         <div
           onClick={(event) => event.stopPropagation()}
           className="relative flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80"
         >
-          <FocusGuard position="first" />
           <button
             type="button"
             onClick={onClose}
@@ -74,9 +74,9 @@ export default function ExportModal({ book, profile, onClose }: ExportModalProps
           </h2>
 
           <ExportCardPanel key={book.id} book={book} profile={profile} />
-          <FocusGuard position="last" />
         </div>
       </FocusTrap>
+      <FocusGuard position="last" />
     </div>
   );
 }

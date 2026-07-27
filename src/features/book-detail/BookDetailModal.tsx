@@ -64,12 +64,12 @@ export default function BookDetailModal({
       {/* escapeDeactivates: false - Escape is already handled above (and by
           BookDetailPanel's own listener), so the trap only needs to own
           Tab-cycling and returning focus to the trigger button on close. */}
+      <FocusGuard position="first" />
       <FocusTrap focusTrapOptions={{ escapeDeactivates: false }}>
         <div
           onClick={(event) => event.stopPropagation()}
           className="relative flex w-full max-w-3xl max-h-full flex-col overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80 sm:p-12"
         >
-          <FocusGuard position="first" />
           {/* Close affordance — outside BookDetailPanel on purpose: it's modal
               chrome, not book content, so it's clickable immediately rather
               than waiting on the scene. */}
@@ -94,9 +94,9 @@ export default function BookDetailModal({
             onBookUpdated={onBookUpdated}
             onBookDeleted={onBookDeleted}
           />
-          <FocusGuard position="last" />
         </div>
       </FocusTrap>
+      <FocusGuard position="last" />
     </div>
 
     {/* Export modal — a sibling (not a child) of the backdrop so clicks on its

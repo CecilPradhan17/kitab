@@ -88,12 +88,12 @@ export default function EditProfileModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
     >
       {/* escapeDeactivates: false - Escape is already handled above. */}
+      <FocusGuard position="first" />
       <FocusTrap focusTrapOptions={{ escapeDeactivates: false }}>
       <div
         onClick={(event) => event.stopPropagation()}
         className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80"
       >
-        <FocusGuard position="first" />
         <button
           type="button"
           onClick={onClose}
@@ -174,9 +174,9 @@ export default function EditProfileModal({
             </button>
           </div>
         </div>
-        <FocusGuard position="last" />
       </div>
       </FocusTrap>
+      <FocusGuard position="last" />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import FocusTrap from "focus-trap-react";
 import type { Profile } from "./types";
 import { updateProfile } from "./profileApi";
 import { getStoredToken } from "@/lib/auth";
@@ -85,6 +86,8 @@ export default function EditProfileModal({
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
     >
+      {/* escapeDeactivates: false - Escape is already handled above. */}
+      <FocusTrap focusTrapOptions={{ escapeDeactivates: false }}>
       <div
         onClick={(event) => event.stopPropagation()}
         className="relative w-full max-w-md rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80"
@@ -122,7 +125,7 @@ export default function EditProfileModal({
               value={displayName}
               onChange={(event) => setDisplayName(event.target.value)}
               placeholder="Your name"
-              className="w-full rounded border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/50 focus:border-accent"
+              className="w-full rounded border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/90 focus:border-accent"
             />
           </div>
 
@@ -145,7 +148,7 @@ export default function EditProfileModal({
               value={bio}
               onChange={(event) => setBio(event.target.value)}
               placeholder="Tell people what you're reading"
-              className="w-full resize-none rounded border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/50 focus:border-accent"
+              className="w-full resize-none rounded border border-white/10 bg-white/5 px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted/90 focus:border-accent"
             />
           </div>
 
@@ -170,6 +173,7 @@ export default function EditProfileModal({
           </div>
         </div>
       </div>
+      </FocusTrap>
     </div>
   );
 }

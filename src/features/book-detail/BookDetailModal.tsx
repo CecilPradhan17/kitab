@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import FocusTrap from "focus-trap-react";
 import type { Book } from "@/features/library/mockBooks";
 import type { Profile } from "@/features/profile/types";
 import BookDetailPanel from "./BookDetailPanel";
@@ -59,35 +60,40 @@ export default function BookDetailModal({
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm sm:p-6"
     >
-      <div
-        onClick={(event) => event.stopPropagation()}
-        className="relative flex w-full max-w-3xl max-h-full flex-col overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80 sm:p-12"
-      >
-        {/* Close affordance — outside BookDetailPanel on purpose: it's modal
-            chrome, not book content, so it's clickable immediately rather
-            than waiting on the scene. */}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+      {/* escapeDeactivates: false - Escape is already handled above (and by
+          BookDetailPanel's own listener), so the trap only needs to own
+          Tab-cycling and returning focus to the trigger button on close. */}
+      <FocusTrap focusTrapOptions={{ escapeDeactivates: false }}>
+        <div
+          onClick={(event) => event.stopPropagation()}
+          className="relative flex w-full max-w-3xl max-h-full flex-col overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80 sm:p-12"
         >
-          <span aria-hidden className="text-xl leading-none">
-            &times;
-          </span>
-        </button>
+          {/* Close affordance — outside BookDetailPanel on purpose: it's modal
+              chrome, not book content, so it's clickable immediately rather
+              than waiting on the scene. */}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <span aria-hidden className="text-xl leading-none">
+              &times;
+            </span>
+          </button>
 
-        <BookDetailPanel
-          key={book.id}
-          book={book}
-          isOwner={isOwner}
-          exporting={exporting}
-          onClose={onClose}
-          onShare={() => setExporting(true)}
-          onBookUpdated={onBookUpdated}
-          onBookDeleted={onBookDeleted}
-        />
-      </div>
+          <BookDetailPanel
+            key={book.id}
+            book={book}
+            isOwner={isOwner}
+            exporting={exporting}
+            onClose={onClose}
+            onShare={() => setExporting(true)}
+            onBookUpdated={onBookUpdated}
+            onBookDeleted={onBookDeleted}
+          />
+        </div>
+      </FocusTrap>
     </div>
 
     {/* Export modal — a sibling (not a child) of the backdrop so clicks on its

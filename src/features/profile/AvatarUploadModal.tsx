@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import FocusTrap from "focus-trap-react";
 import type { Profile } from "./types";
 import { requestAvatarUpload, uploadAvatarFile, confirmAvatarUpload } from "./profileApi";
 import { getStoredToken } from "@/lib/auth";
@@ -122,6 +123,8 @@ export default function AvatarUploadModal({
       onClick={() => !uploading && onClose()}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
     >
+      {/* escapeDeactivates: false - Escape is already handled above. */}
+      <FocusTrap focusTrapOptions={{ escapeDeactivates: false }}>
       <div
         onClick={(event) => event.stopPropagation()}
         className="relative flex w-full max-w-sm flex-col items-center rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80"
@@ -189,6 +192,7 @@ export default function AvatarUploadModal({
           {uploading ? "Uploading…" : "Choose photo"}
         </button>
       </div>
+      </FocusTrap>
     </div>
   );
 }

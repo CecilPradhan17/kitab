@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import FocusTrap from "focus-trap-react";
 import {
   addBook,
   searchBooks,
@@ -282,6 +283,12 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
       onClick={handleDismiss}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
     >
+      {/* initialFocus: false - this modal already autofocuses the search
+          input itself (see inputRef effect below); letting the trap also
+          set initial focus would fight that and land on the Close button
+          instead. escapeDeactivates: false - Escape is already handled by
+          handleDismiss above. */}
+      <FocusTrap focusTrapOptions={{ initialFocus: false, escapeDeactivates: false }}>
       <div
         onClick={(event) => event.stopPropagation()}
         className="relative flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80"
@@ -371,7 +378,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
                   rows={3}
                   maxLength={MAX_QUOTE_LENGTH}
                   placeholder="A line worth remembering…"
-                  className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-serif text-base italic leading-relaxed text-foreground placeholder:not-italic placeholder:font-sans placeholder:text-sm placeholder:text-muted/60 outline-none transition-colors focus:border-accent/60"
+                  className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-serif text-base italic leading-relaxed text-foreground placeholder:not-italic placeholder:font-sans placeholder:text-sm placeholder:text-muted/90 outline-none transition-colors focus:border-accent/60"
                 />
               </label>
 
@@ -540,7 +547,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search by title or author…"
-              className="mt-4 w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-sans text-sm text-foreground placeholder:text-muted/60 outline-none transition-colors focus:border-accent/60"
+              className="mt-4 w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-sans text-sm text-foreground placeholder:text-muted/90 outline-none transition-colors focus:border-accent/60"
             />
 
             {/* Results / status region */}
@@ -617,6 +624,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
           </div>
         )}
       </div>
+      </FocusTrap>
     </div>
   );
 }

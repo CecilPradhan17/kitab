@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import FocusTrap from "focus-trap-react";
 import {
   clearStoredToken,
   clearStoredUser,
@@ -80,6 +81,11 @@ export default function SideNav() {
         }`}
       />
 
+      {/* Unlike the modals, this drawer stays mounted (open/closed toggles
+          translate-x + inert) rather than unmounting, so the trap needs an
+          explicit active prop instead of relying on mount/unmount.
+          escapeDeactivates: false - Escape is already handled above. */}
+      <FocusTrap active={open} focusTrapOptions={{ escapeDeactivates: false }}>
       <nav
         id="side-nav"
         aria-label="Main menu"
@@ -113,6 +119,7 @@ export default function SideNav() {
           Log out
         </button>
       </nav>
+      </FocusTrap>
     </>
   );
 }

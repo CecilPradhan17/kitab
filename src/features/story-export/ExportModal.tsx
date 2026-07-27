@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import FocusTrap from "focus-trap-react";
 import type { Book } from "@/features/library/mockBooks";
 import type { Profile } from "@/features/profile/types";
 import ExportCardPanel from "./ExportCardPanel";
@@ -45,27 +46,34 @@ export default function ExportModal({ book, profile, onClose }: ExportModalProps
       onClick={onClose}
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-6 backdrop-blur-sm"
     >
-      <div
-        onClick={(event) => event.stopPropagation()}
-        className="relative flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80"
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+      {/* escapeDeactivates: false - Escape is already handled above; the
+          trap only needs to own Tab-cycling and returning focus to the
+          trigger on close. This modal can be stacked on top of
+          BookDetailModal's own trap - focus-trap's internal trap stack
+          pauses the lower trap while this one is active. */}
+      <FocusTrap focusTrapOptions={{ escapeDeactivates: false }}>
+        <div
+          onClick={(event) => event.stopPropagation()}
+          className="relative flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80"
         >
-          <span aria-hidden className="text-xl leading-none">
-            &times;
-          </span>
-        </button>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <span aria-hidden className="text-xl leading-none">
+              &times;
+            </span>
+          </button>
 
-        <h2 className="font-sans text-[0.7rem] uppercase tracking-[0.25em] text-accent">
-          Share to story
-        </h2>
+          <h2 className="font-sans text-[0.7rem] uppercase tracking-[0.25em] text-accent">
+            Share to story
+          </h2>
 
-        <ExportCardPanel key={book.id} book={book} profile={profile} />
-      </div>
+          <ExportCardPanel key={book.id} book={book} profile={profile} />
+        </div>
+      </FocusTrap>
     </div>
   );
 }

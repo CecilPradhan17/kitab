@@ -73,9 +73,9 @@ export default function RegisterPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="yourname"
-              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-sm text-foreground placeholder:text-muted/50 focus:outline-none focus:border-accent transition-colors"
+              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-sm text-foreground placeholder:text-muted/90 focus:outline-none focus:border-accent transition-colors"
             />
-            <p className="text-[0.6rem] text-muted/70">
+            <p className="text-[0.6rem] text-muted">
               3–20 chars. Lowercase letters, numbers, underscores. Your profile will be at /username.
             </p>
           </div>
@@ -90,7 +90,7 @@ export default function RegisterPage() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Your Name"
-              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-sm text-foreground placeholder:text-muted/50 focus:outline-none focus:border-accent transition-colors"
+              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-sm text-foreground placeholder:text-muted/90 focus:outline-none focus:border-accent transition-colors"
             />
           </div>
 
@@ -105,7 +105,7 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-sm text-foreground placeholder:text-muted/50 focus:outline-none focus:border-accent transition-colors"
+              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-sm text-foreground placeholder:text-muted/90 focus:outline-none focus:border-accent transition-colors"
             />
           </div>
 
@@ -120,7 +120,7 @@ export default function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Min. 8 characters"
-              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-sm text-foreground placeholder:text-muted/50 focus:outline-none focus:border-accent transition-colors"
+              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-sm text-foreground placeholder:text-muted/90 focus:outline-none focus:border-accent transition-colors"
             />
           </div>
 

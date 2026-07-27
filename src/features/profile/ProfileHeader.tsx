@@ -143,10 +143,7 @@ export default function ProfileHeader({
           <span className="font-serif text-2xl text-foreground">
             {booksReadCount}
           </span>
-          <span
-            className="font-sans text-[0.625rem] uppercase tracking-[0.15em]"
-            style={{ color: "#6b6355" }}
-          >
+          <span className="font-sans text-[0.625rem] uppercase tracking-[0.15em] text-muted">
             Books Read
           </span>
         </div>

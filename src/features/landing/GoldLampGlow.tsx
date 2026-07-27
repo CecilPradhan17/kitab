@@ -105,7 +105,17 @@ export default function GoldLampGlow() {
     // off hard well before its gradient fades to 0. Centering on 100vw
     // instead means it can only ever get clipped by the viewport edge
     // itself, which reads as the glow bleeding off-screen, not a stray box.
-    <div className="pointer-events-none absolute left-1/2 top-0 h-full w-screen -translate-x-1/2 overflow-hidden">
+    //
+    // clip-path hides everything above the bar's own top edge (12%, matching
+    // .gold-bar/.cone-svg's `top: 12%` below) - .gold-bar's box-shadow is
+    // symmetric and would otherwise bloom upward past the bar just as much
+    // as it spills downward. The bar itself sits flush with the clip line
+    // (its box starts at 12%), so it stays fully visible; only the upward
+    // half of its halo, and anything else above that line, gets clipped.
+    <div
+      className="pointer-events-none absolute left-1/2 top-0 h-full w-screen -translate-x-1/2 overflow-hidden"
+      style={{ clipPath: "inset(12% 0 0 0)" }}
+    >
       <style jsx>{`
         .gold-bar {
           position: absolute;

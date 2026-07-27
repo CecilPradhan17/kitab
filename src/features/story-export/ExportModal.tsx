@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import FocusTrap from "focus-trap-react";
 import FocusGuard from "@/features/a11y/FocusGuard";
+import { useGuardedTabTrap } from "@/features/a11y/useGuardedTabTrap";
 import type { Book } from "@/features/library/mockBooks";
 import type { Profile } from "@/features/profile/types";
 import ExportCardPanel from "./ExportCardPanel";
@@ -26,6 +27,9 @@ interface ExportModalProps {
     same reason: a fresh key gives every export clean state with no manual
     reset effect. */
 export default function ExportModal({ book, profile, onClose }: ExportModalProps) {
+  const { firstGuardRef, panelRef, lastGuardRef, containerElements } =
+    useGuardedTabTrap<HTMLDivElement>();
+
   // Escape closes the export modal. The detail modal underneath suppresses its
   // own Escape handler while this is open, so one press closes one layer.
   useEffect(() => {
@@ -52,9 +56,10 @@ export default function ExportModal({ book, profile, onClose }: ExportModalProps
           trigger on close. This modal can be stacked on top of
           BookDetailModal's own trap - focus-trap's internal trap stack
           pauses the lower trap while this one is active. */}
-      <FocusGuard position="first" />
-      <FocusTrap focusTrapOptions={{ escapeDeactivates: false }}>
+      <FocusGuard ref={firstGuardRef} position="first" />
+      <FocusTrap containerElements={containerElements} focusTrapOptions={{ escapeDeactivates: false }}>
         <div
+          ref={panelRef}
           onClick={(event) => event.stopPropagation()}
           className="relative flex w-full max-w-md flex-col items-center gap-6 rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80"
         >
@@ -76,7 +81,7 @@ export default function ExportModal({ book, profile, onClose }: ExportModalProps
           <ExportCardPanel key={book.id} book={book} profile={profile} />
         </div>
       </FocusTrap>
-      <FocusGuard position="last" />
+      <FocusGuard ref={lastGuardRef} position="last" />
     </div>
   );
 }

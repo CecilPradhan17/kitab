@@ -1,5 +1,7 @@
 "use client";
 
+import type { Ref } from "react";
+
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -10,6 +12,10 @@ interface FocusGuardProps {
       (placed immediately after) sends it to the first real focusable
       descendant on Tab wrapping forward past it. */
   position: "first" | "last";
+  /** Collected by useGuardedTabTrap and registered with focus-trap as one of
+      its containerElements - see that hook's doc comment for why a guard
+      needs to be its own container rather than a plain sibling. */
+  ref?: Ref<HTMLDivElement>;
 }
 
 /** focus-trap-react correctly traps Tab in Chrome/Firefox by intercepting
@@ -27,17 +33,13 @@ interface FocusGuardProps {
     then redirects into the trap - a `focus` event isn't racing a native
     default action the way `keydown` is, so it fires reliably everywhere.
 
-    Placed as a SIBLING immediately before/after the focus-trapped element,
-    not as a child inside it - deliberately, after finding that a child
-    placement breaks the trap itself. focus-trap-react scans its entire
-    container for tabbable nodes to work out where "first"/"last" are for
-    its own keydown-based wrapping; a guard living inside that container
-    became part of that computation and threw off which real element it
-    considered last, making the actual last control (unreachable). Living
-    outside the container as a sibling means focus-trap never sees these
-    at all - they only matter to Safari's native tab traversal, which is
-    exactly the gap they're patching. */
-export default function FocusGuard({ position }: FocusGuardProps) {
+    Must be used together with useGuardedTabTrap, which registers this
+    guard as its own container with focus-trap (see that hook's comment for
+    why - a plain sibling isn't enough on its own). Placed as a sibling
+    immediately before/after the focus-trapped element in the DOM either
+    way, which is what the next/previousElementSibling lookup below relies
+    on to find the real content to redirect into. */
+export default function FocusGuard({ position, ref }: FocusGuardProps) {
   function handleFocus(event: React.FocusEvent<HTMLDivElement>) {
     const container =
       position === "first"
@@ -52,6 +54,7 @@ export default function FocusGuard({ position }: FocusGuardProps) {
 
   return (
     <div
+      ref={ref}
       data-focus-guard
       tabIndex={0}
       onFocus={handleFocus}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import FocusTrap from "focus-trap-react";
 import FocusGuard from "@/features/a11y/FocusGuard";
+import { useGuardedTabTrap } from "@/features/a11y/useGuardedTabTrap";
 import {
   clearStoredToken,
   clearStoredUser,
@@ -19,6 +20,12 @@ export default function SideNav() {
   const pathname = usePathname();
   const [loggedIn, setLoggedIn] = useState(false);
   const [open, setOpen] = useState(false);
+  // [open] dependency - unlike the modals' guards, these mount/unmount with
+  // the drawer's open state rather than with the whole component (nav stays
+  // mounted, sliding via CSS + inert), so the containers must be
+  // recollected on every open/close, not just once on mount.
+  const { firstGuardRef, panelRef, lastGuardRef, containerElements } =
+    useGuardedTabTrap<HTMLElement>([open]);
 
   // localStorage is read in an effect (not render) so the server-rendered
   // markup — which can't know about the user — matches the first client paint.
@@ -90,9 +97,14 @@ export default function SideNav() {
           rely on their whole modal being unmounted when closed) - otherwise
           they'd sit outside nav's inert scoping and stay tabbable even with
           the drawer closed. */}
-      {open && <FocusGuard position="first" />}
-      <FocusTrap active={open} focusTrapOptions={{ escapeDeactivates: false }}>
+      {open && <FocusGuard ref={firstGuardRef} position="first" />}
+      <FocusTrap
+        active={open}
+        containerElements={containerElements}
+        focusTrapOptions={{ escapeDeactivates: false }}
+      >
       <nav
+        ref={panelRef}
         id="side-nav"
         aria-label="Main menu"
         inert={!open}
@@ -126,7 +138,7 @@ export default function SideNav() {
         </button>
       </nav>
       </FocusTrap>
-      {open && <FocusGuard position="last" />}
+      {open && <FocusGuard ref={lastGuardRef} position="last" />}
     </>
   );
 }

@@ -1,31 +1,46 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { ImageResponse } from "next/og";
 
+export const runtime = "nodejs";
 export const size = { width: 32, height: 32 };
 export const contentType = "image/png";
 
-// Simple gold-on-dark "K" monogram, generated so the favicon matches the
-// brand accent without needing a separate designed image asset. The full
-// KITAB wordmark treatment (see CLAUDE.md) is reserved for larger surfaces -
-// at 32px a single letterform reads better than a squeezed-in wordmark.
-export default function Icon() {
+export default async function Icon() {
+  const cormorant = await readFile(
+    path.join(process.cwd(), "src/app/fonts/CormorantGaramond-Medium.woff"),
+  );
+
   return new ImageResponse(
     (
       <div
         style={{
-          width: "100%",
-          height: "100%",
+          width: 32,
+          height: 32,
+          borderRadius: 4,
+          background: "#0a0a0a",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#0a0a0a",
-          color: "#c9973a",
-          fontSize: 22,
-          fontWeight: 600,
         }}
       >
-        K
+        <span
+          style={{
+            fontFamily: "Cormorant Garamond",
+            fontWeight: 500,
+            fontSize: 28,
+            color: "#c9973a",
+          }}
+        >
+          K
+        </span>
       </div>
     ),
-    { ...size },
+    {
+      ...size,
+      fonts: [
+        { name: "Cormorant Garamond", data: cormorant, weight: 500, style: "normal" },
+      ],
+    },
   );
 }

@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import FocusTrap from "focus-trap-react";
+import { useRef, useState } from "react";
 import FocusGuard from "@/features/a11y/FocusGuard";
-import { useGuardedTabTrap } from "@/features/a11y/useGuardedTabTrap";
+import { useFocusTrap } from "@/features/a11y/useFocusTrap";
 import type { Book } from "@/features/library/mockBooks";
 import type { Profile } from "@/features/profile/types";
 import BookDetailPanel from "./BookDetailPanel";
@@ -48,8 +47,8 @@ export default function BookDetailModal({
   // here (not in BookDetailPanel) since it must survive a book switch and
   // gates the always-rendered ExportModal below.
   const [exporting, setExporting] = useState(false);
-  const { firstGuardRef, panelRef, lastGuardRef, containerElements } =
-    useGuardedTabTrap<HTMLDivElement>();
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, { active: book !== null });
 
   if (!book) return null;
 
@@ -64,43 +63,38 @@ export default function BookDetailModal({
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm sm:p-6"
     >
-      {/* escapeDeactivates: false - Escape is already handled above (and by
-          BookDetailPanel's own listener), so the trap only needs to own
-          Tab-cycling and returning focus to the trigger button on close. */}
-      <FocusGuard ref={firstGuardRef} position="first" />
-      <FocusTrap containerElements={containerElements} focusTrapOptions={{ escapeDeactivates: false }}>
-        <div
-          ref={panelRef}
-          onClick={(event) => event.stopPropagation()}
-          className="relative flex w-full max-w-3xl max-h-full flex-col overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80 sm:p-12"
+      <div
+        ref={panelRef}
+        onClick={(event) => event.stopPropagation()}
+        className="relative flex w-full max-w-3xl max-h-full flex-col overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80 sm:p-12"
+      >
+        <FocusGuard position="first" />
+        {/* Close affordance — outside BookDetailPanel on purpose: it's modal
+            chrome, not book content, so it's clickable immediately rather
+            than waiting on the scene. */}
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
         >
-          {/* Close affordance — outside BookDetailPanel on purpose: it's modal
-              chrome, not book content, so it's clickable immediately rather
-              than waiting on the scene. */}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
-          >
-            <span aria-hidden className="text-xl leading-none">
-              &times;
-            </span>
-          </button>
+          <span aria-hidden className="text-xl leading-none">
+            &times;
+          </span>
+        </button>
 
-          <BookDetailPanel
-            key={book.id}
-            book={book}
-            isOwner={isOwner}
-            exporting={exporting}
-            onClose={onClose}
-            onShare={() => setExporting(true)}
-            onBookUpdated={onBookUpdated}
-            onBookDeleted={onBookDeleted}
-          />
-        </div>
-      </FocusTrap>
-      <FocusGuard ref={lastGuardRef} position="last" />
+        <BookDetailPanel
+          key={book.id}
+          book={book}
+          isOwner={isOwner}
+          exporting={exporting}
+          onClose={onClose}
+          onShare={() => setExporting(true)}
+          onBookUpdated={onBookUpdated}
+          onBookDeleted={onBookDeleted}
+        />
+        <FocusGuard position="last" />
+      </div>
     </div>
 
     {/* Export modal — a sibling (not a child) of the backdrop so clicks on its

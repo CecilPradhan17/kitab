@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import FocusTrap from "focus-trap-react";
 import FocusGuard from "@/features/a11y/FocusGuard";
-import { useGuardedTabTrap } from "@/features/a11y/useGuardedTabTrap";
+import { useFocusTrap } from "@/features/a11y/useFocusTrap";
 import type { Profile } from "./types";
 import { requestAvatarUpload, uploadAvatarFile, confirmAvatarUpload } from "./profileApi";
 import { getStoredToken } from "@/lib/auth";
@@ -32,8 +31,8 @@ export default function AvatarUploadModal({
   onClose,
   onUploaded,
 }: AvatarUploadModalProps) {
-  const { firstGuardRef, panelRef, lastGuardRef, containerElements } =
-    useGuardedTabTrap<HTMLDivElement>();
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, { active: profile !== null });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -127,14 +126,12 @@ export default function AvatarUploadModal({
       onClick={() => !uploading && onClose()}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
     >
-      {/* escapeDeactivates: false - Escape is already handled above. */}
-      <FocusGuard ref={firstGuardRef} position="first" />
-      <FocusTrap containerElements={containerElements} focusTrapOptions={{ escapeDeactivates: false }}>
       <div
         ref={panelRef}
         onClick={(event) => event.stopPropagation()}
         className="relative flex w-full max-w-sm flex-col items-center rounded-2xl border border-white/10 bg-[#0f0f0f] p-8 shadow-2xl shadow-black/80"
       >
+        <FocusGuard position="first" />
         <button
           type="button"
           onClick={onClose}
@@ -197,9 +194,8 @@ export default function AvatarUploadModal({
         >
           {uploading ? "Uploading…" : "Choose photo"}
         </button>
+        <FocusGuard position="last" />
       </div>
-      </FocusTrap>
-      <FocusGuard ref={lastGuardRef} position="last" />
     </div>
   );
 }

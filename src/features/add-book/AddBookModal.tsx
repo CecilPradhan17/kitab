@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import FocusTrap from "focus-trap-react";
 import FocusGuard from "@/features/a11y/FocusGuard";
-import { useGuardedTabTrap } from "@/features/a11y/useGuardedTabTrap";
+import { useFocusTrap } from "@/features/a11y/useFocusTrap";
 import {
   addBook,
   searchBooks,
@@ -44,8 +43,11 @@ const MAX_TITLE_LENGTH = 200;
 const MAX_AUTHOR_LENGTH = 100;
 
 export default function AddBookModal({ open, onClose, onAdded }: AddBookModalProps) {
-  const { firstGuardRef, panelRef, lastGuardRef, containerElements } =
-    useGuardedTabTrap<HTMLDivElement>();
+  const panelRef = useRef<HTMLDivElement>(null);
+  // initialFocus: false - this modal already autofocuses the search input
+  // itself (see inputRef effect below); letting the trap also set initial
+  // focus would fight that and land on the Close button instead.
+  useFocusTrap(panelRef, { active: open, initialFocus: false });
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BookSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -287,21 +289,12 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
       onClick={handleDismiss}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 backdrop-blur-sm"
     >
-      {/* initialFocus: false - this modal already autofocuses the search
-          input itself (see inputRef effect below); letting the trap also
-          set initial focus would fight that and land on the Close button
-          instead. escapeDeactivates: false - Escape is already handled by
-          handleDismiss above. */}
-      <FocusGuard ref={firstGuardRef} position="first" />
-      <FocusTrap
-        containerElements={containerElements}
-        focusTrapOptions={{ initialFocus: false, escapeDeactivates: false }}
-      >
       <div
         ref={panelRef}
         onClick={(event) => event.stopPropagation()}
         className="relative flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80"
       >
+        <FocusGuard position="first" />
         {/* Close affordance */}
         <button
           type="button"
@@ -632,9 +625,8 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
             </div>
           </div>
         )}
+        <FocusGuard position="last" />
       </div>
-      </FocusTrap>
-      <FocusGuard ref={lastGuardRef} position="last" />
     </div>
   );
 }

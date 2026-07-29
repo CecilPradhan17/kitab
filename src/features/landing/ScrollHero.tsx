@@ -11,6 +11,27 @@ import {
 import HeroPhaseScattered from "./HeroPhaseScattered";
 import HeroPhaseOrganized from "./HeroPhaseOrganized";
 
+// Persistent label pinned to the rounded container's top-left corner,
+// regardless of which phase is showing or how far the user has scrolled -
+// not part of either phase's own fade choreography, so it's rendered once
+// here rather than inside HeroPhaseScattered/Organized.
+function ContainerKicker() {
+  return (
+    <div className="pointer-events-none absolute left-6 top-6 z-20 sm:left-8 sm:top-8">
+      {/* Same fontSize clamp() as HeroPhaseScattered's h2, so this kicker
+          reads at the same visual weight as the hero text rather than as a
+          smaller caption above it. */}
+      <span
+        className="font-serif text-foreground"
+        style={{ fontSize: "clamp(1.75rem, 5vw, 3.25rem)" }}
+      >
+        Without{" "}
+        <span className="font-logo uppercase tracking-wide text-accent">Kitab</span>{" "}
+      </span>
+    </div>
+  );
+}
+
 // The landing page's scroll-driven hero: a 300vh wrapper with a 100vh
 // sticky inner container pins the viewport in place while scroll progress
 // (0-1 across the wrapper) drives two opacity layers via useTransform —
@@ -57,45 +78,57 @@ export default function ScrollHero() {
 
   if (prefersReducedMotion) {
     return (
-      <div className="flex w-full flex-col">
-        <motion.div
-          className="flex min-h-[70vh] items-center justify-center"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 0.6 }}
-        >
-          <HeroPhaseScattered scrollYProgress={settledProgress} />
-        </motion.div>
-        <motion.div
-          className="flex min-h-[70vh] items-center justify-center"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 0.6 }}
-        >
-          <HeroPhaseOrganized />
-        </motion.div>
+      <div className="w-full p-4 sm:p-8">
+        <div className="relative flex flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0f0f0f]">
+          <ContainerKicker />
+          <motion.div
+            className="flex min-h-[70vh] items-center justify-center"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true, amount: 0.4 }}
+            transition={{ duration: 0.6 }}
+          >
+            <HeroPhaseScattered scrollYProgress={settledProgress} />
+          </motion.div>
+          <motion.div
+            className="flex min-h-[70vh] items-center justify-center"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true, amount: 0.4 }}
+            transition={{ duration: 0.6 }}
+          >
+            <HeroPhaseOrganized />
+          </motion.div>
+        </div>
       </div>
     );
   }
 
   return (
     <div ref={wrapperRef} className="relative h-[300vh] w-full">
-      <div className="sticky top-0 h-screen overflow-hidden">
-        <motion.div
-          className="absolute inset-0"
-          style={{ pointerEvents: scatteredPointerEvents }}
-        >
-          <HeroPhaseScattered scrollYProgress={scrollYProgress} />
-        </motion.div>
+      <div className="sticky top-0 h-screen overflow-hidden p-4 sm:p-8">
+        {/* Rounded frame around both phases (not just the scattered one) -
+            they crossfade in place within this same box, so the frame has
+            to stay constant across the transition rather than only wrapping
+            Phase 1 and leaving Phase 3 full-bleed, which would jump from
+            "framed" to "full-bleed" mid-scroll. Matches the dark-panel
+            convention used elsewhere (WordLookup, BookDetailModal). */}
+        <div className="relative h-full w-full overflow-hidden rounded-3xl border border-white/10 bg-[#0f0f0f]">
+          <ContainerKicker />
+          <motion.div
+            className="absolute inset-0"
+            style={{ pointerEvents: scatteredPointerEvents }}
+          >
+            <HeroPhaseScattered scrollYProgress={scrollYProgress} />
+          </motion.div>
 
-        <motion.div
-          className="absolute inset-0"
-          style={{ opacity: organizedOpacity, pointerEvents: organizedPointerEvents }}
-        >
-          <HeroPhaseOrganized />
-        </motion.div>
+          <motion.div
+            className="absolute inset-0"
+            style={{ opacity: organizedOpacity, pointerEvents: organizedPointerEvents }}
+          >
+            <HeroPhaseOrganized />
+          </motion.div>
+        </div>
       </div>
     </div>
   );

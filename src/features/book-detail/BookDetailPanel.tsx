@@ -195,7 +195,7 @@ export default function BookDetailPanel({
           since the (invisible but present) real content drives this
           wrapper's actual box size. */}
       {!sceneReady && (
-        <div className="absolute inset-0 z-10">
+        <div className="pointer-events-none absolute inset-0 z-10">
           <BookDetailSkeleton />
         </div>
       )}

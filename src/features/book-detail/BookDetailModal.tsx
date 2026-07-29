@@ -71,12 +71,16 @@ export default function BookDetailModal({
         <FocusGuard position="first" />
         {/* Close affordance — outside BookDetailPanel on purpose: it's modal
             chrome, not book content, so it's clickable immediately rather
-            than waiting on the scene. */}
+            than waiting on the scene. z-20 is required, not decorative: the
+            3D viewer's WebGL canvas gets its own browser compositing layer
+            and can paint above plain z-auto siblings, which on mobile's
+            single-column layout puts it directly under this corner and
+            silently swallows taps without an explicit z-index to win against it. */}
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+          className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
         >
           <span aria-hidden className="text-xl leading-none">
             &times;

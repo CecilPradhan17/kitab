@@ -34,21 +34,46 @@ export default function GoldLampGlow() {
     const PARTICLE_COUNT = 28;
     const motes: HTMLDivElement[] = [];
 
+    // Mirrors .lamp-root's --cone-w: clamp(240px, 88vw, 900px) so the dust's
+    // spread/fall/sway shrink together with the cone on narrow viewports
+    // instead of scattering past the now-narrower visible light. A one-time
+    // read at mount (like the cone's own clamp() is resolved at layout
+    // time) - only sizes the *magnitude* of the jitter, not a mote's actual
+    // position (still calc(50% + offset), so it stays centered and correct
+    // even if this goes stale after a later resize).
+    const coneScale = Math.min(900, Math.max(240, window.innerWidth * 0.88)) / 900;
+
     for (let i = 0; i < PARTICLE_COUNT; i++) {
       const mote = document.createElement("div");
       mote.className = "gold-mote";
 
-      const spread = 220 + Math.random() * 100;
+      const spread = (220 + Math.random() * 100) * coneScale;
       const offsetX = Math.random() * spread * 2 - spread;
+      // Which side of center this mote spawned on, so its outward drift
+      // below continues away from center (matching the cone's own widening)
+      // instead of drifting in a random direction independent of its start.
+      const driftSign = offsetX >= 0 ? 1 : -1;
+      // Total additional distance from its spawn point a mote drifts by the
+      // time it's fully fallen - the light itself is much wider at the
+      // bottom of the fall than at the top (see the cone's flare), so motes
+      // should spread further out the more they've fallen, not just wobble
+      // in place around their spawn x the whole way down.
+      const maxDrift = (140 + Math.random() * 120) * coneScale;
 
       const duration = 20 + Math.random() * 16; // 20s - 36s
       const delay = -Math.random() * duration; // stagger + mid-fall starts
-      const fallDistance = 620 + Math.random() * 60;
+      const fallDistance = (620 + Math.random() * 60) * coneScale;
       const size = 1 + Math.random() * 1;
 
       const waypoints = [0, 20, 40, 60, 80, 100].map((pct, idx) => ({
         pct,
-        x: idx === 0 ? 0 : Math.random() * 36 - 18,
+        // Outward drift scales with fall progress (pct/100), plus a small
+        // random jitter each waypoint for natural wobble on top of it.
+        x:
+          idx === 0
+            ? 0
+            : driftSign * maxDrift * (pct / 100) +
+              (Math.random() * 36 - 18) * coneScale,
         y: (fallDistance * pct) / 100,
       }));
 
@@ -109,14 +134,27 @@ export default function GoldLampGlow() {
     // No clip-path here (removed after trying a hard cutoff above the bar) -
     // .gold-bar's own box-shadow bleeding a little above the line, fainter
     // than the cone below, is the intended look, not a bug to clip away.
-    <div className="pointer-events-none absolute left-1/2 top-0 h-full w-screen -translate-x-1/2 overflow-hidden">
+    <div className="lamp-root pointer-events-none absolute left-1/2 top-0 h-full w-screen -translate-x-1/2 overflow-hidden">
       <style jsx>{`
+        /* Single responsive source of truth for the lamp's scale, shared by
+           the bar and the cone (via calc()/var() below) so they always
+           shrink together in proportion - on a narrow viewport the whole
+           fixture scales down instead of the cone's flare just getting
+           clipped at the screen edge with no visible taper. Caps out at the
+           same 900px the cone was fixed to before, so nothing changes on
+           desktop; 88vw keeps ~12% breathing room past the flare on mobile. */
+        .lamp-root {
+          --cone-w: clamp(240px, 88vw, 900px);
+        }
+
         .gold-bar {
           position: absolute;
           top: 12%;
           left: 50%;
           transform: translateX(-50%);
-          width: 380px;
+          /* 380 / 900 = the bar's original ratio to the cone's full width -
+             keeps the bar the same relative length as the cone scales. */
+          width: calc(var(--cone-w) * 0.4222);
           height: 3px;
           border-radius: 2px;
           background: linear-gradient(
@@ -129,7 +167,30 @@ export default function GoldLampGlow() {
           box-shadow:
             0 0 8px 1px #f6d989,
             0 0 24px 4px rgba(246, 217, 137, 0.6);
-          animation: flicker 4s ease-in-out infinite;
+          /* Two animations on the same element, touching different
+             properties (transform vs. opacity) so they don't conflict:
+             lampBarGrow runs once on load (the bar starting short and
+             extending to full length), flicker keeps looping forever
+             underneath it. flicker's start is delayed to match
+             lampBarGrow's duration so the idle flicker only kicks in once
+             the bar has finished growing, instead of flickering mid-grow. */
+          animation:
+            lampBarGrow 2.4s cubic-bezier(0.16, 1, 0.3, 1) both,
+            flicker 4s ease-in-out infinite 2.4s;
+        }
+
+        /* Bar grows from a short stub to full length, anchored at its own
+           center (default transform-origin) so it extends outward evenly
+           in both directions rather than sliding in from one side. */
+        @keyframes lampBarGrow {
+          0% {
+            transform: translateX(-50%) scaleX(0.08);
+            opacity: 0;
+          }
+          100% {
+            transform: translateX(-50%) scaleX(1);
+            opacity: 1;
+          }
         }
 
         @keyframes flicker {
@@ -147,9 +208,44 @@ export default function GoldLampGlow() {
           top: 12%;
           left: 50%;
           transform: translateX(-50%);
-          width: 900px;
-          height: 700px;
+          /* Anchors the scale-up at the cone's top edge (where it meets the
+             bar) instead of its center, so the light reads as spreading
+             downward/outward from the bar rather than growing from its own
+             middle. */
+          transform-origin: 50% 0%;
+          width: var(--cone-w);
+          /* height: auto + aspect-ratio (not a fixed height) so the cone
+             scales as a whole with its width - the polygon points below are
+             viewBox coordinates, so the entire shape (including the flare's
+             angle) scales down together instead of just getting clipped. */
+          aspect-ratio: 900 / 700;
+          height: auto;
           overflow: visible;
+          /* Same load-in beat as the bar's lampBarGrow (same duration/easing,
+             started together) so the light expands in lockstep with the bar
+             extending, rather than the two growing out of sync. */
+          animation: lampConeGrow 2.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        @keyframes lampConeGrow {
+          0% {
+            transform: translateX(-50%) scale(0.08);
+            opacity: 0;
+          }
+          100% {
+            transform: translateX(-50%) scale(1);
+            opacity: 1;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .gold-bar {
+            animation: flicker 4s ease-in-out infinite;
+          }
+
+          .cone-svg {
+            animation: none;
+          }
         }
 
         :global(.gold-mote) {

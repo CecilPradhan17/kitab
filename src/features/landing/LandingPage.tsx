@@ -63,7 +63,20 @@ export default function LandingPage() {
           collection.
         </h1>
 
-        <div className="relative z-10">
+        <Link
+          href="/register"
+          className="relative z-10 mt-12 rounded-full bg-accent px-8 py-3.5 font-sans text-sm font-semibold uppercase tracking-[0.2em] text-background transition-colors hover:bg-accent/90"
+        >
+          Create your library
+        </Link>
+
+        {/* Back in normal flow directly after the button (not absolutely
+            bottom-anchored to the whole 860px section, which put too much
+            air between them) - a small mt gives "slightly below the
+            button" for free, without guessing a pixel offset that has to
+            track the button's own position. Centered under the button at
+            every breakpoint via the parent's default `items-center`. */}
+        <div className="relative z-10 mt-4">
           <WordLookup />
         </div>
       </div>

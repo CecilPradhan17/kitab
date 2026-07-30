@@ -21,7 +21,7 @@ export default function LandingPage() {
       <div className="absolute right-5 top-5 z-10 flex items-center gap-4 sm:right-8 sm:top-8">
         <Link
           href="/register"
-          className="font-sans text-sm text-muted transition-colors hover:text-foreground"
+          className="rounded border border-foreground/25 px-5 py-2 font-sans text-xs font-semibold uppercase tracking-[0.2em] text-foreground transition-colors hover:border-foreground/50"
         >
           Sign up
         </Link>

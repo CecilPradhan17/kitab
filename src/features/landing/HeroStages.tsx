@@ -129,48 +129,110 @@ function LibraryStageHeading({ wordIndex }: { wordIndex: number }) {
   );
 }
 
-// A "Share" button and a CSS-drawn phone frame (no image asset), rendered
-// as a Fragment (not wrapped in their own flex div). The phone is pinned
-// via absolute right-0 (not a flex sibling) specifically so its size can
-// change without shifting library-1.png or the button - growing/shrinking
-// it just extends its left edge, since its right edge stays anchored to
-// the row's own right edge. The button's gap from library-1.png is a
-// fixed value (matched to what justify-between used to compute here) so
-// it also stays put regardless of the phone's size. Starts empty; clicking
-// Share reveals share-1.png inside the screen. The frame is sized by
-// HEIGHT (not width) on sm+ - a width-driven size let the phone's
-// aspect-[9/19] balloon taller than the panel's available vertical space,
-// pushing content below the panel's bottom edge where overflow-hidden
-// silently clipped it off. Reset-on-scroll-away is handled by the caller
-// remounting this via a key change rather than an effect here (React's own
-// recommended pattern for "reset state when some condition changes" - see
-// LibraryStageBottom).
+// A CSS-drawn phone frame (no image asset) whose own screen holds the
+// prompt (caption/arrow/"Share" button) and, once clicked, share-1.png -
+// the two crossfade in place rather than the button living outside the
+// phone. At sm+ the phone is pinned via absolute right-0 (not a flex
+// sibling) specifically so its size can change without shifting
+// library-1.png - growing/shrinking it just extends its left edge, since
+// its right edge stays anchored to the row's own right edge. The frame is
+// sized by HEIGHT (not width) on sm+ - a width-driven size let the
+// phone's aspect-[10/19] balloon taller than the panel's available
+// vertical space, pushing content below the panel's bottom edge where
+// overflow-hidden silently clipped it off. Reset-on-scroll-away is
+// handled by the caller remounting this via a key change rather than an
+// effect here (React's own recommended pattern for "reset state when
+// some condition changes" - see LibraryStageBottom).
 function SharePhone() {
   const [revealed, setRevealed] = useState(false);
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setRevealed(true)}
-        className="shrink-0 rounded-full bg-accent px-9 py-3.5 font-sans text-base font-semibold uppercase tracking-wide text-background shadow-lg shadow-accent/30 transition-colors hover:bg-accent/90"
-      >
-        Share
-      </button>
-
-      <div className="absolute right-0 top-1/2 aspect-[10/19] w-36 -translate-y-1/2 rounded-[1.75rem] border-2 border-white/15 bg-black p-1.5 shadow-2xl sm:h-[58vh] sm:w-auto">
-        <div className="absolute left-1/2 top-1.5 z-10 h-1 w-8 -translate-x-1/2 rounded-full bg-white/15" />
-        <div className="relative h-full w-full overflow-hidden rounded-[1.25rem] bg-neutral-950">
-          <img
-            src="/hero/share-1.png"
-            alt=""
-            className={`absolute inset-0 h-full w-full object-cover transition-all duration-500 ${
-              revealed ? "scale-100 opacity-100" : "scale-95 opacity-0"
-            }`}
-          />
+    // On mobile, library-1.png is hidden (see LibraryStageBottom) so
+    // there's nothing to balance the phone's position against - it sits
+    // in normal flow, centered, and sized by height to be as large as the
+    // panel comfortably allows. At sm+ this reverts to the original
+    // absolute right-0 anchoring alongside the image.
+    <div className="relative aspect-[10/19] h-[55vh] w-auto shrink-0 rounded-[1.75rem] border-2 border-white/15 bg-black p-1.5 shadow-2xl sm:absolute sm:right-0 sm:top-1/2 sm:h-[58vh] sm:w-auto sm:-translate-y-1/2">
+      <div className="absolute left-1/2 top-1.5 z-10 h-1 w-8 -translate-x-1/2 rounded-full bg-white/15" />
+      <div className="relative h-full w-full overflow-hidden rounded-[1.25rem] bg-neutral-950">
+        {/* The caption/arrow/button prompt lives on the phone's own
+            screen now (rather than beside the phone) so it reads as the
+            phone's UI - it fades out as share-1.png fades in below. */}
+        <div
+          className={`absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 px-4 text-center transition-opacity duration-500 ${
+            revealed ? "pointer-events-none opacity-0" : "opacity-100"
+          }`}
+        >
+          <p className="max-w-[18ch] text-center font-sans text-sm text-muted">
+            Generate custom shareable book images
+          </p>
+          <svg
+            aria-hidden
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-accent"
+          >
+            <path d="M12 4v14M6 13l6 6 6-6" />
+          </svg>
+          <button
+            type="button"
+            onClick={() => setRevealed(true)}
+            className="rounded-full bg-accent px-9 py-3.5 font-sans text-base font-semibold uppercase tracking-wide text-background shadow-lg shadow-accent/30 transition-colors hover:bg-accent/90"
+          >
+            Share
+          </button>
         </div>
+        <img
+          src="/hero/share-1.png"
+          alt=""
+          className={`absolute inset-0 h-full w-full object-cover transition-all duration-500 ${
+            revealed ? "scale-100 opacity-100" : "scale-95 opacity-0"
+          }`}
+        />
       </div>
-    </>
+
+      {/* Mobile-only equivalents of the beside-the-phone text below - there's
+          no room beside the phone there (it fills the available width), so
+          this splits into a short line above and below instead. bottom-full/
+          top-full anchor them flush against the phone frame's own top/bottom
+          edge, same right-full trick as the desktop version. */}
+      <div
+        className={`absolute bottom-full left-1/2 mb-4 -translate-x-1/2 whitespace-nowrap text-center font-serif text-2xl italic text-foreground transition-opacity duration-500 sm:hidden ${
+          revealed ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        Easy to share
+      </div>
+      <div
+        className={`absolute left-1/2 top-full mt-4 -translate-x-1/2 whitespace-nowrap text-center font-serif text-2xl italic text-foreground transition-opacity duration-500 sm:hidden ${
+          revealed ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        Custom images
+      </div>
+
+      {/* Fades in beside the phone once revealed. right-full anchors it
+          flush against the phone frame's own left edge (not a fixed
+          offset), so it stays put beside the phone regardless of the
+          phone's own size. Desktop-only (see the wrapper's sm:absolute
+          comment above) - on mobile the phone already fills the available
+          width, leaving no room beside it. */}
+      <div
+        className={`absolute right-full top-1/2 mr-6 hidden w-max -translate-y-1/2 text-right transition-opacity duration-500 sm:block ${
+          revealed ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+      >
+        <p className="font-serif text-4xl italic leading-snug text-foreground">Aesthetic</p>
+        <p className="font-serif text-4xl italic leading-snug text-foreground">custom</p>
+        <p className="font-serif text-4xl italic leading-snug text-foreground">shareable images.</p>
+      </div>
+    </div>
   );
 }
 
@@ -257,15 +319,20 @@ function LibraryStageBottom({ activeIndex }: { activeIndex: number }) {
       </div>
       <div
         aria-hidden={activeIndex !== 1}
-        className={`absolute inset-0 flex items-center justify-start gap-[159px] transition-opacity duration-500 ${
+        className={`absolute inset-0 flex flex-col items-center justify-center gap-6 transition-opacity duration-500 sm:flex-row sm:justify-start ${
           activeIndex === 1 ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       >
-        <img src="/hero/library-1.png" alt="" className="w-full max-w-xs" />
+        {/* Hidden on mobile - there's no room to keep it readable next to
+            a phone that's meant to be as large as possible there, so the
+            phone takes over the whole panel instead (see SharePhone). At
+            sm+, the phone is absolutely positioned (out of this flex flow
+            entirely - see SharePhone), so this image is the only in-flow
+            child and just sits at the row's left edge. */}
+        <img src="/hero/library-1.png" alt="" className="hidden w-full max-w-xs sm:block" />
         {/* Keyed on activeIndex so scrolling back to Share always remounts
             a fresh (un-shared) reveal instead of remembering a previous
-            click. The phone is absolutely positioned (see SharePhone) so
-            its size can change independently of this fixed gap. */}
+            click. */}
         <SharePhone key={activeIndex} />
       </div>
     </div>

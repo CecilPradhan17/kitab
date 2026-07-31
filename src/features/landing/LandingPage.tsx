@@ -82,6 +82,82 @@ export default function LandingPage() {
       </div>
 
       <ScrollHero />
+
+      {/* Closing CTA after the scroll sequence ends - visitors who scrolled
+          all the way through the three stages shouldn't have to scroll back
+          up to the hero button to sign up. Two side-by-side paths (sign up /
+          browse an example library) rather than one, split by "or" - stacks
+          vertically on mobile where there's no room for two columns. */}
+      <section className="flex min-h-[50vh] w-full flex-col items-center justify-center gap-12 px-6 py-16 sm:flex-row sm:gap-16">
+        <div className="flex flex-col items-center gap-5">
+          <h3 className="font-sans text-2xl font-bold text-foreground sm:text-3xl">
+            Start your digital library today
+          </h3>
+          <CtaArrow />
+          <Link
+            href="/register"
+            className="rounded-full bg-accent px-8 py-3.5 font-sans text-sm font-semibold uppercase tracking-[0.2em] text-background transition-colors hover:bg-accent/90"
+          >
+            Create your library
+          </Link>
+        </div>
+
+        <p className="font-serif text-xl italic text-muted">or</p>
+
+        <div className="flex flex-col items-center gap-5">
+          <h3 className="font-sans text-2xl font-bold text-foreground sm:text-3xl">
+            Check out my library for example :)
+          </h3>
+          <CtaArrow />
+          <Link
+            href="/cecildev"
+            className="rounded-full border border-foreground/25 px-8 py-3.5 font-sans text-sm font-semibold uppercase tracking-[0.2em] text-foreground transition-colors hover:border-foreground/50"
+          >
+            View my library
+          </Link>
+        </div>
+      </section>
+
+      {/* Closing logo beat - same KITAB wordmark treatment used on the
+          library page header ([username]/page.tsx: font-logo,
+          tracking-[0.5em], paddingLeft offsetting the trailing letter-
+          spacing), just sized up to hero scale here since it's the page's
+          final, standalone statement rather than a small section label.
+          Gold (text-accent) here instead of that page's white, matching the
+          "Kitab" in the hero h1 above instead. */}
+      <div className="flex flex-col items-center gap-6 pb-24 pt-4">
+        <p
+          className="font-logo text-5xl tracking-[0.5em] text-accent sm:text-7xl"
+          style={{ paddingLeft: "0.5em" }}
+        >
+          KITAB
+        </p>
+        <p className="font-serif text-lg italic text-muted">
+          — Created by a reader who needed a way to track his books. 
+        </p>
+      </div>
     </main>
+  );
+}
+
+// Same down-pointing arrow used on the Share phone's reveal prompt
+// (HeroStages.tsx) - reused here to point from each heading down to its
+// button below.
+function CtaArrow() {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="text-accent"
+    >
+      <path d="M12 4v14M6 13l6 6 6-6" />
+    </svg>
   );
 }

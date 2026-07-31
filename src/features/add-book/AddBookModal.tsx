@@ -368,7 +368,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
               <label className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between">
                   <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
-                    Quote
+                    Add your reader&apos;s notes
                   </span>
                   <span className="font-sans text-[0.6rem] tracking-[0.1em] text-muted">
                     {quote.length}/{MAX_QUOTE_LENGTH}

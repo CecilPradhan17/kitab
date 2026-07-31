@@ -52,7 +52,7 @@ export function HeroStageContent({ heading, images }: Stage) {
       <h2
         className="text-center font-sans font-bold text-foreground"
         style={{
-          fontSize: "clamp(2.5rem, 8vw, 6rem)",
+          fontSize: "clamp(2rem, 5.5vw, 4.5rem)",
           lineHeight: 1.05,
           letterSpacing: "-0.02em",
         }}
@@ -95,12 +95,18 @@ export function HeroStageContent({ heading, images }: Stage) {
 const LIBRARY_WORDS = ["Build", "Share"];
 const LIBRARY_SUFFIX = "your digital library with Kitab";
 
+// One label per HERO_STAGES[1].images entry, rendered above its image in
+// LibraryStageBottom - same font-serif italic treatment as the reveal text
+// beside SharePhone, so the two three-image rows (Build/Share) read as one
+// consistent caption style.
+const LIBRARY_IMAGE_LABELS = ["Interactive", "3D Book", "Modals"];
+
 function LibraryStageHeading({ wordIndex }: { wordIndex: number }) {
   return (
     <h2
       className="w-full text-center font-sans font-bold text-foreground"
       style={{
-        fontSize: "clamp(2.5rem, 8vw, 6rem)",
+        fontSize: "clamp(2rem, 5.5vw, 4.5rem)",
         lineHeight: 1.05,
         letterSpacing: "-0.02em",
       }}
@@ -302,18 +308,38 @@ function LibraryStageBottom({ activeIndex }: { activeIndex: number }) {
             justify-between row - no scrolling, no snap. */}
         <div
           ref={carouselRef}
-          className="flex w-full snap-x snap-mandatory items-center gap-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:justify-between sm:gap-0 sm:overflow-visible"
+          className="flex h-full w-full snap-x snap-mandatory items-center gap-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:justify-between sm:gap-0 sm:overflow-visible"
         >
           {HERO_STAGES[1].images.map((src, i) => (
-            <img
+            <div
               key={src}
-              ref={(el) => {
-                carouselImgRefs.current[i] = el;
-              }}
-              src={src}
-              alt=""
-              className="w-full max-w-xs shrink-0 snap-start sm:shrink"
-            />
+              className="flex h-full w-full max-w-xs shrink-0 snap-start flex-col items-center gap-3 sm:shrink"
+            >
+              <p className="text-center font-serif text-2xl italic leading-snug text-muted sm:text-4xl">
+                {LIBRARY_IMAGE_LABELS[i]}
+              </p>
+              {/* flex-1 + min-h-0 (not a fixed vh guess) - this box takes
+                  exactly whatever vertical space is left in the row after
+                  the label, so it shrinks automatically when the heading
+                  above wraps to two lines and eats into that space. Without
+                  min-h-0, a flex item's default min-height is auto, which
+                  stops it shrinking below the image's intrinsic size and
+                  defeats the whole cap. object-contain + auto w/h then lets
+                  the image itself scale down by whichever bound - width or
+                  height - is tighter, instead of only ever being
+                  width-driven and overflowing past the panel's
+                  overflow-hidden edge on shorter/narrower viewports. */}
+              <div className="flex min-h-0 w-full flex-1 items-center justify-center">
+                <img
+                  ref={(el) => {
+                    carouselImgRefs.current[i] = el;
+                  }}
+                  src={src}
+                  alt=""
+                  className="h-auto max-h-full w-auto max-w-full object-contain"
+                />
+              </div>
+            </div>
           ))}
         </div>
       </div>

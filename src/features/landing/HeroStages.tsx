@@ -313,32 +313,33 @@ function LibraryStageBottom({ activeIndex }: { activeIndex: number }) {
           {HERO_STAGES[1].images.map((src, i) => (
             <div
               key={src}
-              className="flex h-full w-full max-w-xs shrink-0 snap-start flex-col items-center gap-3 sm:shrink"
+              className="flex w-full max-w-xs shrink-0 snap-start flex-col items-center gap-3 sm:shrink"
             >
               <p className="text-center font-serif text-2xl italic leading-snug text-muted sm:text-4xl">
                 {LIBRARY_IMAGE_LABELS[i]}
               </p>
-              {/* flex-1 + min-h-0 (not a fixed vh guess) - this box takes
-                  exactly whatever vertical space is left in the row after
-                  the label, so it shrinks automatically when the heading
-                  above wraps to two lines and eats into that space. Without
-                  min-h-0, a flex item's default min-height is auto, which
-                  stops it shrinking below the image's intrinsic size and
-                  defeats the whole cap. object-contain + auto w/h then lets
-                  the image itself scale down by whichever bound - width or
-                  height - is tighter, instead of only ever being
-                  width-driven and overflowing past the panel's
-                  overflow-hidden edge on shorter/narrower viewports. */}
-              <div className="flex min-h-0 w-full flex-1 items-center justify-center">
-                <img
-                  ref={(el) => {
-                    carouselImgRefs.current[i] = el;
-                  }}
-                  src={src}
-                  alt=""
-                  className="h-auto max-h-full w-auto max-w-full object-contain"
-                />
-              </div>
+              {/* max-h-[38vh] lives on the img itself, not a wrapper - a
+                  percentage max-height (max-h-full) only resolves against a
+                  parent with a DEFINITE height; a wrapper sized by its own
+                  max-h alone has an auto height, so max-h-full on the image
+                  was silently ignored per spec, leaving the image at its
+                  full natural (uncapped) height. That overflowed upward out
+                  of its own box - centered via items-center, an oversized
+                  flex child overflows equally on both sides - straight into
+                  the label above it. A viewport-relative unit like vh needs
+                  no definite parent, so capping the img directly actually
+                  works: it can't grow tall enough to overflow the panel's
+                  overflow-hidden edge if the heading above wraps to two
+                  lines and eats into the row's available space, and w-auto
+                  lets the width shrink to match, preserving aspect ratio. */}
+              <img
+                ref={(el) => {
+                  carouselImgRefs.current[i] = el;
+                }}
+                src={src}
+                alt=""
+                className="h-auto max-h-[38vh] w-auto max-w-full object-contain sm:max-h-[44vh]"
+              />
             </div>
           ))}
         </div>

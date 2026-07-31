@@ -1,6 +1,47 @@
 import "dotenv/config";
 import { createApp } from "./app";
 
+// Required in every environment. A few of these (S3_BUCKET_NAME,
+// CLOUDFRONT_DOMAIN in lib/s3.ts) are read elsewhere with non-null
+// assertions (`!`) — without this check, a missing value wouldn't crash at
+// startup, it would silently produce the string "undefined" inside stored
+// URLs (e.g. avatar_url) and only surface much later as a broken image.
+// jwt.ts also self-checks JWT_SECRET at import time (defense in depth, in
+// case that module is ever imported without going through index.ts), but
+// this sweep is the canonical, complete check — it lists every missing var
+// at once instead of failing on whichever one happens to be read first.
+const REQUIRED_ENV_VARS = [
+  "DATABASE_URL",
+  "JWT_SECRET",
+  "AWS_REGION",
+  "AWS_ACCESS_KEY_ID",
+  "AWS_SECRET_ACCESS_KEY",
+  "S3_BUCKET_NAME",
+  "CLOUDFRONT_DOMAIN",
+] as const;
+
+// Only required in production — app.ts falls back to localhost:3000 for
+// FRONTEND_ORIGIN in dev, which is fine for local work.
+const PRODUCTION_ONLY_ENV_VARS = ["FRONTEND_ORIGIN"] as const;
+
+function validateEnv(): void {
+  const required =
+    process.env.NODE_ENV === "production"
+      ? [...REQUIRED_ENV_VARS, ...PRODUCTION_ONLY_ENV_VARS]
+      : REQUIRED_ENV_VARS;
+
+  const missing = required.filter((key) => !process.env[key]);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variable(s): ${missing.join(", ")}. ` +
+        `Set them in server/.env (see server/.env.example).`
+    );
+  }
+}
+
+validateEnv();
+
 /**
  * Server entry point.
  *

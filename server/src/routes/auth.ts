@@ -1,5 +1,6 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
+import rateLimit from "express-rate-limit";
 import { pool } from "../db";
 import { signToken } from "../lib/jwt";
 import { requireAuth } from "../middleware/requireAuth";
@@ -8,9 +9,25 @@ export const authRouter = Router();
 
 const MAX_DISPLAY_NAME_LENGTH = 50; // mirrors the display_name_length CHECK constraint (server/db/10_display_name_length_constraint.sql)
 
+// Keyed by IP (the default keyGenerator), not user id — unlike
+// avatarUploadLimiter in users.ts, these routes are unauthenticated, so
+// there's no user identity yet to key on. Guards against brute-forcing
+// passwords (login) and mass account creation (register).
+//
+// Note: req.ip only reflects the real client IP once this app is deployed
+// behind a proxy (Railway/Render) if app.set("trust proxy", 1) is configured
+// in app.ts — otherwise every request appears to come from the proxy's IP
+// and this limiter effectively becomes global instead of per-client.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // POST /api/auth/register
 // Body: { username, email, password, displayName? }
-authRouter.post("/register", async (req, res) => {
+authRouter.post("/register", authLimiter, async (req, res) => {
   const { username, email, password, displayName } = req.body as {
     username?: string;
     email?: string;
@@ -77,7 +94,7 @@ authRouter.post("/register", async (req, res) => {
 
 // POST /api/auth/login
 // Body: { email, password }
-authRouter.post("/login", async (req, res) => {
+authRouter.post("/login", authLimiter, async (req, res) => {
   const { email, password } = req.body as { email?: string; password?: string };
 
   if (!email || !password) {

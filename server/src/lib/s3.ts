@@ -5,5 +5,9 @@ import { S3Client } from "@aws-sdk/client-s3";
 // automatically, so they're never referenced directly in code.
 export const s3 = new S3Client({ region: process.env.AWS_REGION });
 
+// Non-null assertions are safe here: index.ts's validateEnv() runs at
+// startup, before createApp() (and therefore before any route that imports
+// this module) and throws if S3_BUCKET_NAME/CLOUDFRONT_DOMAIN are missing.
+// That startup check is the canonical guarantee for these — see index.ts.
 export const S3_BUCKET_NAME = process.env.S3_BUCKET_NAME!;
 export const CLOUDFRONT_DOMAIN = process.env.CLOUDFRONT_DOMAIN!;

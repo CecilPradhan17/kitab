@@ -249,7 +249,20 @@ function SharePhone() {
 // the other children are, so it lands at the exact same position in both.
 // This lets justify-between give equal, self-computed gaps in the Share
 // branch (image - button - phone) instead of a fixed/hand-picked one.
-function LibraryStageBottom({ activeIndex }: { activeIndex: number }) {
+function LibraryStageBottom({
+  activeIndex,
+  visible,
+}: {
+  activeIndex: number;
+  /** Whether the shared library/share skeleton is the on-screen layer at
+      all - activeIndex alone can't tell that apart from stage 0, since
+      HeroStages sets libraryWordIndex (passed through as activeIndex) to 0
+      for BOTH "still on stage 0" and "on stage 1/Build", just to pick the
+      right branch to render once the skeleton does fade in. Without this,
+      the carousel's auto-advance effect (below) would start counting from
+      page load, before the user has scrolled anywhere near this stage. */
+  visible: boolean;
+}) {
   const carouselRef = useRef<HTMLDivElement>(null);
   const carouselImgRefs = useRef<(HTMLImageElement | null)[]>([]);
   const carouselDirectionRef = useRef(1);
@@ -257,11 +270,18 @@ function LibraryStageBottom({ activeIndex }: { activeIndex: number }) {
 
   // Auto-advances the mobile carousel below, left to right and then back
   // right to left once it reaches the last image (a bounce, not a loop-
-  // around jump), one step every 3.5s. Runs unconditionally rather than
-  // only while this Build layer is visible - simplest option, and it's a
-  // harmless no-op at sm+ where the row isn't scrollable (overflow-visible)
-  // and scrollTo has nothing to do.
+  // around jump), one step every 3.5s. Only runs while this Build layer is
+  // actually on screen (activeIndex === 0 and visible - see the visible
+  // prop's comment above for why both are needed), so it doesn't silently
+  // advance in the background before the user has scrolled to this stage
+  // at all. Resets to the first (leftmost) image and the forward direction
+  // each time the layer becomes visible, so scrolling away mid-bounce and
+  // back always starts fresh from image 0 rather than resuming wherever it
+  // left off.
   useEffect(() => {
+    if (activeIndex !== 0 || !visible) return;
+    setCarouselIndex(0);
+    carouselDirectionRef.current = 1;
     const lastIndex = HERO_STAGES[1].images.length - 1;
     const id = setInterval(() => {
       setCarouselIndex((prev) => {
@@ -274,7 +294,7 @@ function LibraryStageBottom({ activeIndex }: { activeIndex: number }) {
       });
     }, 3500);
     return () => clearInterval(id);
-  }, []);
+  }, [activeIndex, visible]);
 
   // Scrolls by the pixel delta between the container and the target image
   // (rather than the simpler element.scrollIntoView()) specifically so it
@@ -417,7 +437,7 @@ export default function HeroStages({ scrollYProgress }: HeroStagesProps) {
             without touching the heading's own font size. */}
         <div className="flex h-full w-full flex-col items-center px-6 pt-12 sm:pt-16">
           <LibraryStageHeading wordIndex={libraryWordIndex} />
-          <LibraryStageBottom activeIndex={libraryWordIndex} />
+          <LibraryStageBottom activeIndex={libraryWordIndex} visible={activeStage !== 0} />
         </div>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { pool } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import { getOrIngestCover } from "../lib/coverIngest";
@@ -33,6 +34,23 @@ export const booksRouter = Router();
 const MAX_QUOTE_LENGTH = 150; // mirrors the quote_length CHECK constraint (server/db/09_quote_length_constraint.sql)
 const MAX_TITLE_LENGTH = 200; // mirrors the title_length CHECK constraint (server/db/11_title_length_constraint.sql)
 const MAX_AUTHOR_LENGTH = 100; // mirrors the author_length CHECK constraint (server/db/12_author_length_constraint.sql)
+
+// Keyed by user id (like avatarUploadLimiter in users.ts) — this route is
+// already auth-gated, so the authenticated identity is the meaningful key,
+// not IP. Only applied to POST: a never-before-seen ISBN on this route
+// triggers an outbound Open Library fetch, sharp resizes, two S3 uploads, and
+// a book_covers insert (getOrIngestCover), so an authenticated user hammering
+// this endpoint can drive unbounded S3/DB growth. GET/PATCH/DELETE don't
+// touch the ingest pipeline and stay unlimited. The limit is generous enough
+// that no real user adding books to their library would ever hit it — this
+// exists to cap ingest-pipeline abuse, not to throttle normal use.
+const addBookLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  keyGenerator: (req) => req.user!.userId,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // GET /api/books — the authenticated user's library, in reading order.
 booksRouter.get("/", requireAuth, async (req, res) => {
@@ -95,7 +113,7 @@ const ISBN_PATTERN = /^(\d{9}[\dX]|\d{13})$/;
 // book from custom_books) must be present — it's how the client tells the
 // server which catalog this book came from. There's no book_number to set —
 // it's derived on read from ordering.
-booksRouter.post("/", requireAuth, async (req, res) => {
+booksRouter.post("/", requireAuth, addBookLimiter, async (req, res) => {
   const { title, author, isbn, customBookId, dateStarted, dateFinished, quote } = req.body ?? {};
 
   // Validate up front and reject with 400 before touching the DB. req.body is

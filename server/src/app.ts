@@ -29,6 +29,25 @@ export function createApp(): Express {
   // Parse JSON request bodies into req.body. Needed once we add write endpoints.
   app.use(express.json());
 
+  // Hand-set security headers, deliberately not pulled in via helmet — this
+  // API serves JSON only, so only a handful of helmet's headers are actually
+  // meaningful here, and setting them by hand keeps the dependency count down
+  // and every header individually explainable.
+  app.use((_req, res, next) => {
+    // Stops browsers MIME-sniffing a response into a different content type
+    // than declared (e.g. treating a JSON body an attacker influenced as
+    // HTML/script in some legacy scenarios).
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    // This API's responses should never render inside an iframe; defense-in-
+    // depth against clickjacking-style embedding even though the API serves
+    // no HTML UI.
+    res.setHeader("X-Frame-Options", "DENY");
+    // Responses never need to leak referrer information anywhere; nothing
+    // legitimate consumes it from this API.
+    res.setHeader("Referrer-Policy", "no-referrer");
+    next();
+  });
+
   // Health check — a trivial route to confirm the server is up and reachable.
   app.get("/health", (_req, res) => {
     res.json({ status: "ok" });

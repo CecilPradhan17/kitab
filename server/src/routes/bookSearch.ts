@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { pool } from "../db";
 
 /**
@@ -34,6 +35,24 @@ const SEARCH_LIMIT = 20;
 const CUSTOM_SEARCH_LIMIT = 5;
 
 export const bookSearchRouter = Router();
+
+// Keyed by IP (the default keyGenerator) — this route is unauthenticated, so
+// there's no user id to key on (same situation as authLimiter in auth.ts).
+// As-is, this endpoint is an open proxy: anyone can bounce arbitrary traffic
+// through it straight to Open Library's public API, which must be closed
+// before the app is publicly reachable. 30/min per IP is well above what one
+// person typing in the add-book search box generates, but stops the endpoint
+// being scripted as a free Open Library relay.
+//
+// Note: same deployment caveat as authLimiter — behind the production proxy
+// (Railway/Render), req.ip only reflects the real client IP once
+// app.set("trust proxy", 1) is configured in app.ts.
+const bookSearchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Simple substring match on title/author — no full-text search/ranking setup
 // in this project (see CLAUDE.md's raw-SQL, no-ORM philosophy). Fine at the
@@ -105,7 +124,7 @@ async function searchOpenLibrary(q: string): Promise<BookSearchResult[]> {
 // an Open Library outage shouldn't hide our own custom books, and vice versa.
 // The endpoint only fails outright if something goes wrong before either
 // lookup even starts.
-bookSearchRouter.get("/", async (req, res) => {
+bookSearchRouter.get("/", bookSearchLimiter, async (req, res) => {
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
 
   if (q === "") {

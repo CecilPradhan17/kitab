@@ -1,6 +1,5 @@
 import type { Book } from "./mockBooks";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+import { API_URL } from "@/lib/apiUrl";
 
 /**
  * Fetch a user's library by username — no auth required. Used by the single

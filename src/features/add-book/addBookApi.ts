@@ -1,8 +1,7 @@
 import type { Book } from "@/features/library/mockBooks";
 import { getStoredToken } from "@/lib/auth";
 import { parseApiError } from "@/lib/apiError";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+import { API_URL } from "@/lib/apiUrl";
 
 // Mirrors the server's discriminated union (server/src/routes/bookSearch.ts):
 // `source` tells the picker which identifier to send back to POST /api/books.

@@ -1,8 +1,7 @@
 import type { Book } from "@/features/library/mockBooks";
 import { getStoredToken } from "@/lib/auth";
 import { parseApiError } from "@/lib/apiError";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+import { API_URL } from "@/lib/apiUrl";
 
 export async function updateBookQuote(
   id: string,

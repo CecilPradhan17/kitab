@@ -123,10 +123,12 @@ async function searchOpenLibrary(q: string): Promise<BookSearchResult[]> {
 // catalog discovery (find a real book to add), NOT searching the user's own
 // library.
 //
-// The two sources are queried independently and each failure is contained —
-// an Open Library outage shouldn't hide our own custom books, and vice versa.
-// The endpoint only fails outright if something goes wrong before either
-// lookup even starts.
+// The two sources are queried concurrently (they're completely independent —
+// one hits our own Postgres, the other Open Library's API — so the endpoint's
+// latency is the slower of the two, not their sum) and each failure is
+// contained: allSettled means an Open Library outage shouldn't hide our own
+// custom books, and vice versa. The endpoint only fails outright if something
+// goes wrong before either lookup even starts.
 bookSearchRouter.get("/", bookSearchLimiter, async (req, res) => {
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
 
@@ -134,19 +136,35 @@ bookSearchRouter.get("/", bookSearchLimiter, async (req, res) => {
     return res.status(400).json({ error: "Query parameter q is required" });
   }
 
+  const [customSettled, openLibrarySettled] = await Promise.allSettled([
+    searchCustomBooks(q),
+    searchOpenLibrary(q),
+  ]);
+
   let customResults: BookSearchResult[] = [];
-  try {
-    customResults = await searchCustomBooks(q);
-  } catch (err) {
-    console.error("GET /api/book-search: custom book search failed:", err);
+  if (customSettled.status === "fulfilled") {
+    customResults = customSettled.value;
+  } else {
+    console.error("GET /api/book-search: custom book search failed:", customSettled.reason);
   }
 
   let openLibraryResults: BookSearchResult[] = [];
-  try {
-    openLibraryResults = await searchOpenLibrary(q);
-  } catch (err) {
-    console.error("GET /api/book-search: Open Library search failed:", err);
+  if (openLibrarySettled.status === "fulfilled") {
+    openLibraryResults = openLibrarySettled.value;
+  } else {
+    console.error("GET /api/book-search: Open Library search failed:", openLibrarySettled.reason);
   }
 
-  res.json([...customResults, ...openLibraryResults]);
+  // Dedupe across sources: a community-submitted book can also exist in Open
+  // Library, and title+author is the only key the two sources share (custom
+  // books have no ISBN). The custom entry wins — it's listed first and is the
+  // copy other users' libraries already reference.
+  const customKeys = new Set(
+    customResults.map((r) => `${r.title.toLowerCase()}|${r.author.toLowerCase()}`)
+  );
+  const dedupedOpenLibrary = openLibraryResults.filter(
+    (r) => !customKeys.has(`${r.title.toLowerCase()}|${r.author.toLowerCase()}`)
+  );
+
+  res.json([...customResults, ...dedupedOpenLibrary]);
 });

@@ -1,7 +1,6 @@
 import type { Profile } from "./types";
 import { parseApiError } from "@/lib/apiError";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+import { API_URL } from "@/lib/apiUrl";
 
 /**
  * Fetch a public profile by username — no auth required. Runs client-side on

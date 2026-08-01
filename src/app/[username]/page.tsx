@@ -29,23 +29,35 @@ export default function ProfilePage() {
   const [isOwner, setIsOwner] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const fetchAll = useCallback(async () => {
-    const [profileData, booksData] = await Promise.all([
-      getProfile(username),
-      getPublicBooks(username),
-    ]);
+    // Reset on entry so a retry (fetchAll doubles as onBooksChanged after
+    // add/edit/delete) can recover from a previous failure.
+    setLoadError(false);
+    try {
+      const [profileData, booksData] = await Promise.all([
+        getProfile(username),
+        getPublicBooks(username),
+      ]);
 
-    if (!profileData) {
-      setNotFound(true);
+      if (!profileData) {
+        setNotFound(true);
+        return; // finally clears loading
+      }
+
+      setProfile(profileData);
+      setBooks(booksData);
+      setIsOwner(getStoredUser()?.username === username);
+    } catch {
+      // getProfile only returns null for a clean 404 — anything else
+      // (network failure, 5xx) lands here. Without this catch the rejection
+      // was unhandled and `loading` never cleared, stranding the visitor on
+      // the skeleton forever.
+      setLoadError(true);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setProfile(profileData);
-    setBooks(booksData);
-    setIsOwner(getStoredUser()?.username === username);
-    setLoading(false);
   }, [username]);
 
   // react-hooks/set-state-in-effect fires here, but doesn't apply: this is
@@ -76,6 +88,20 @@ export default function ProfilePage() {
             ))}
           </div>
         </section>
+      </main>
+    );
+  }
+
+  // Fetch failure (network error, 5xx) — distinct from a clean 404 below.
+  // A subtle inline message, deliberately not a full error page: the most
+  // common cause is transient (API restart, flaky connection) and a reload
+  // usually resolves it.
+  if (loadError) {
+    return (
+      <main className="flex-1 flex items-center justify-center">
+        <p className="font-sans text-sm text-muted">
+          Failed to load profile. Please try again.
+        </p>
       </main>
     );
   }

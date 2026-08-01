@@ -1,5 +1,6 @@
 import express, { type Express, type ErrorRequestHandler } from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import { authRouter } from "./routes/auth";
 import { booksRouter } from "./routes/books";
 import { bookSearchRouter } from "./routes/bookSearch";
@@ -52,6 +53,34 @@ export function createApp(): Express {
   app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
   });
+
+  // Coarse per-IP backstop against API hammering, layered UNDER the
+  // per-route limiters (authLimiter, bookSearchLimiter, addBookLimiter,
+  // avatarUploadLimiter, customCoverUploadLimiter) below — those stay the
+  // tight line of defense for their specific expensive operations, and a
+  // request has to pass BOTH its bucket and this general one. This one just
+  // catches everything else (and everything in aggregate) that no single
+  // route-specific limiter would.
+  //
+  // Skips public GET reads so anonymous visitors browsing a shared profile
+  // are never throttled: the only GET routes under /users/ are the two
+  // public profile reads (profile + books — every other /users operation is
+  // POST/PATCH and auth-gated), and /book-search already has its own
+  // stricter 30/min limiter, which this skip also keeps from double-counting
+  // against this general bucket.
+  //
+  // Keyed by IP (the default keyGenerator) — same req.ip/trust-proxy caveat
+  // as authLimiter in routes/auth.ts.
+  const generalApiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please slow down and try again shortly" },
+    skip: (req) =>
+      req.method === "GET" && (req.path.startsWith("/users/") || req.path.startsWith("/book-search")),
+  });
+  app.use("/api", generalApiLimiter);
 
   // Feature routers, mounted under /api.
   app.use("/api/auth", authRouter);

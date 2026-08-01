@@ -38,10 +38,10 @@ const DUMMY_HASH = bcrypt.hashSync(randomUUID(), BCRYPT_ROUNDS);
 // default is plain text, which neither can parse.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 10,
+  limit: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many attempts. Please wait a few minutes and try again." },
+  message: { error: "Too many attempts, please try again later" },
 });
 
 // POST /api/auth/register

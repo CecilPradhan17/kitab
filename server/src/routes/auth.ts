@@ -33,11 +33,15 @@ const DUMMY_HASH = bcrypt.hashSync(randomUUID(), BCRYPT_ROUNDS);
 // behind a proxy (Railway/Render) if app.set("trust proxy", 1) is configured
 // in app.ts — otherwise every request appears to come from the proxy's IP
 // and this limiter effectively becomes global instead of per-client.
+// An object `message` is sent as JSON by express-rate-limit, matching the
+// { error } shape parseApiError / the login page expect — the library
+// default is plain text, which neither can parse.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: "Too many attempts. Please wait a few minutes and try again." },
 });
 
 // POST /api/auth/register

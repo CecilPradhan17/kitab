@@ -16,7 +16,7 @@ export async function searchBooks(query: string): Promise<BookSearchResult[]> {
   );
 
   if (!res.ok) {
-    throw new Error(`Search failed: ${res.status} ${res.statusText}`);
+    throw new Error(await parseApiError(res, `Search failed: ${res.status} ${res.statusText}`));
   }
 
   return res.json();
@@ -47,7 +47,7 @@ export async function addBook(input: AddBookInput): Promise<Omit<Book, "bookNumb
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to add book: ${res.status} ${res.statusText}`);
+    throw new Error(await parseApiError(res, `Failed to add book: ${res.status} ${res.statusText}`));
   }
 
   return res.json();
@@ -77,13 +77,20 @@ export async function requestCustomBookCoverUpload(
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to request cover upload: ${res.status} ${res.statusText}`);
+    throw new Error(
+      await parseApiError(res, `Failed to request cover upload: ${res.status} ${res.statusText}`)
+    );
   }
 
   return res.json();
 }
 
-/** Uploads the file directly to S3 via the presigned URL — never touches Express. */
+/**
+ * Uploads the file directly to S3 via the presigned URL — never touches
+ * Express. A failure here returns S3's own XML error body, not our JSON
+ * { error } shape, so parseApiError doesn't apply — statusText is the
+ * right fallback (and effectively the only option).
+ */
 export async function uploadCustomBookCoverFile(uploadUrl: string, file: File): Promise<void> {
   const res = await fetch(uploadUrl, {
     method: "PUT",

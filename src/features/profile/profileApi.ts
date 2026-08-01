@@ -17,7 +17,7 @@ export async function getProfile(username: string): Promise<Profile | null> {
     return null;
   }
   if (!res.ok) {
-    throw new Error(`Failed to fetch profile: ${res.status} ${res.statusText}`);
+    throw new Error(await parseApiError(res, `Failed to fetch profile: ${res.status} ${res.statusText}`));
   }
 
   return res.json();
@@ -71,13 +71,20 @@ export async function requestAvatarUpload(
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to request avatar upload: ${res.status} ${res.statusText}`);
+    throw new Error(
+      await parseApiError(res, `Failed to request avatar upload: ${res.status} ${res.statusText}`)
+    );
   }
 
   return res.json();
 }
 
-/** Uploads the file directly to S3 via the presigned URL — never touches Express. */
+/**
+ * Uploads the file directly to S3 via the presigned URL — never touches
+ * Express. A failure here returns S3's own XML error body, not our JSON
+ * { error } shape, so parseApiError doesn't apply — statusText is the
+ * right fallback (and effectively the only option).
+ */
 export async function uploadAvatarFile(uploadUrl: string, file: File): Promise<void> {
   const res = await fetch(uploadUrl, {
     method: "PUT",
@@ -105,7 +112,9 @@ export async function confirmAvatarUpload(token: string, key: string): Promise<P
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to confirm avatar upload: ${res.status} ${res.statusText}`);
+    throw new Error(
+      await parseApiError(res, `Failed to confirm avatar upload: ${res.status} ${res.statusText}`)
+    );
   }
 
   return res.json();

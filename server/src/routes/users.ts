@@ -20,12 +20,15 @@ const MAX_DISPLAY_NAME_LENGTH = 50; // mirrors the display_name_length CHECK con
 // Keyed by user id, not IP — this route is already auth-gated, so the
 // authenticated identity is a more meaningful limit than an IP address
 // (which can be shared/proxied across many users).
+// An object `message` is sent as JSON by express-rate-limit, matching the
+// { error } shape parseApiError expects — the library default is plain text.
 const avatarUploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
   keyGenerator: (req) => req.user!.userId,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: "Too many upload attempts. Please wait a few minutes and try again." },
 });
 
 interface PublicProfile {

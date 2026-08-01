@@ -44,12 +44,15 @@ const MAX_AUTHOR_LENGTH = 100; // mirrors the author_length CHECK constraint (se
 // touch the ingest pipeline and stay unlimited. The limit is generous enough
 // that no real user adding books to their library would ever hit it — this
 // exists to cap ingest-pipeline abuse, not to throttle normal use.
+// An object `message` is sent as JSON by express-rate-limit, matching the
+// { error } shape parseApiError expects — the library default is plain text.
 const addBookLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 30,
   keyGenerator: (req) => req.user!.userId,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: "Too many books added recently. Please wait a few minutes and try again." },
 });
 
 // GET /api/books — the authenticated user's library, in reading order.

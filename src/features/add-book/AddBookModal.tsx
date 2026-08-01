@@ -165,10 +165,10 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
           setResults(found);
           setError(null);
         }
-      } catch {
+      } catch (err) {
         if (!cancelled) {
           setResults([]);
-          setError("Search failed. Please try again.");
+          setError(err instanceof Error && err.message ? err.message : "Search failed. Please try again.");
         }
       } finally {
         if (!cancelled) setSearching(false);
@@ -219,8 +219,12 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
       });
       onAdded(); // refresh the grid
       onClose(); // and dismiss (which also resets all state)
-    } catch {
-      setSubmitError("Something went wrong adding the book. Please try again.");
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error && err.message
+          ? err.message
+          : "Something went wrong adding the book. Please try again."
+      );
       setSubmitting(false);
     }
   }

@@ -1,5 +1,6 @@
 import type { Book } from "@/features/library/mockBooks";
 import { getStoredToken } from "@/lib/auth";
+import { parseApiError } from "@/lib/apiError";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
@@ -19,7 +20,7 @@ export async function updateBookQuote(
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to update quote: ${res.status} ${res.statusText}`);
+    throw new Error(await parseApiError(res, `Failed to update quote: ${res.status} ${res.statusText}`));
   }
 
   return res.json();
@@ -34,6 +35,6 @@ export async function deleteBook(id: string): Promise<void> {
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to delete book: ${res.status} ${res.statusText}`);
+    throw new Error(await parseApiError(res, `Failed to delete book: ${res.status} ${res.statusText}`));
   }
 }

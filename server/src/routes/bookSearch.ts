@@ -47,11 +47,14 @@ export const bookSearchRouter = Router();
 // Note: same deployment caveat as authLimiter — behind the production proxy
 // (Railway/Render), req.ip only reflects the real client IP once
 // app.set("trust proxy", 1) is configured in app.ts.
+// An object `message` is sent as JSON by express-rate-limit, matching the
+// { error } shape parseApiError expects — the library default is plain text.
 const bookSearchLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 30,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: "Too many searches. Please wait a minute and try again." },
 });
 
 // Simple substring match on title/author — no full-text search/ranking setup

@@ -23,12 +23,15 @@ const MAX_COVER_BYTES = 5 * 1024 * 1024; // 5MB
 // Keyed by user id, same reasoning as the avatar limiter: this route is
 // already auth-gated, so the authenticated identity is a more meaningful
 // limit than a possibly-shared IP address.
+// An object `message` is sent as JSON by express-rate-limit, matching the
+// { error } shape parseApiError expects — the library default is plain text.
 const customCoverUploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 10,
   keyGenerator: (req) => req.user!.userId,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { error: "Too many upload attempts. Please wait a few minutes and try again." },
 });
 
 interface CustomBook {

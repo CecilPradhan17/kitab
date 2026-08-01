@@ -127,6 +127,21 @@ customBooksRouter.post("/", requireAuth, async (req, res) => {
   let spineColor: string | null;
   try {
     const raw = await s3.send(new GetObjectCommand({ Bucket: S3_BUCKET_NAME, Key: key! }));
+
+    // A presigned PUT can't enforce the fileSize the client declared when the
+    // URL was issued (see the comment on POST /cover above) — so an attacker
+    // can PUT something far larger than MAX_COVER_BYTES straight to S3 and
+    // have this endpoint buffer the whole thing into memory. Check the actual
+    // stored size before reading the body at all, and clean up the oversized
+    // object instead of leaving it in the bucket indefinitely.
+    if (raw.ContentLength === undefined || raw.ContentLength > MAX_COVER_BYTES) {
+      s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET_NAME, Key: key! })).catch((err) => {
+        console.error("Failed to clean up oversized raw custom-book cover upload:", err);
+      });
+      res.status(400).json({ error: "Uploaded file is too large" });
+      return;
+    }
+
     const rawBytes = await raw.Body!.transformToByteArray();
     const rawBuffer = Buffer.from(rawBytes);
     [{ gridBuffer, textureBuffer }, spineColor] = await Promise.all([

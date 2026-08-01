@@ -78,6 +78,16 @@ function isISODate(value: unknown): value is string {
   );
 }
 
+// Strips hyphens/spaces and uppercases (the ISBN-10 check digit can be "x"),
+// so "978-0-13-468599-1" and "9780134685991" normalize to the same value.
+// Validated against ISBN_PATTERN below before ever being used.
+function normalizeIsbn(value: string): string {
+  return value.trim().replace(/[- ]/g, "").toUpperCase();
+}
+
+// ISBN-10 (9 digits + a check digit that's 0-9 or X) or ISBN-13 (13 digits).
+const ISBN_PATTERN = /^(\d{9}[\dX]|\d{13})$/;
+
 // POST /api/books — add a book to the authenticated user's library.
 //
 // Body: { title, author, isbn?, customBookId?, dateStarted?, dateFinished?, quote? }.
@@ -104,6 +114,17 @@ booksRouter.post("/", requireAuth, async (req, res) => {
   const hasCustomBookId = typeof customBookId === "string" && customBookId.trim() !== "";
   if (hasIsbn === hasCustomBookId) {
     errors.push("exactly one of isbn or customBookId is required");
+  }
+
+  // Normalize + validate the ISBN shape here, before it ever flows into an S3
+  // object key (covers/{isbn}/grid.webp in lib/coverIngest.ts), an outbound
+  // fetch URL path, or the book_covers cache key — previously the raw
+  // client-supplied string went straight into all three unvalidated.
+  // Normalizing also dedupes hyphenated vs. bare forms of the same ISBN in
+  // that cache instead of treating them as different books.
+  const normalizedIsbn = hasIsbn ? normalizeIsbn(isbn) : "";
+  if (hasIsbn && !ISBN_PATTERN.test(normalizedIsbn)) {
+    errors.push("isbn must be a valid ISBN-10 or ISBN-13");
   }
 
   // Dates are optional, but if present must be valid ISO dates and ordered.
@@ -136,7 +157,9 @@ booksRouter.post("/", requireAuth, async (req, res) => {
 
   try {
     if (hasIsbn) {
-      bookIsbn = isbn.trim();
+      // Use the normalized form, not the raw trim — this is what becomes the
+      // S3 key / fetch path / cache key, so it must be canonical.
+      bookIsbn = normalizedIsbn;
       // Fetch (or reuse a previously cached) S3/CloudFront cover for this
       // ISBN. Falls back to linking Open Library directly on any failure, so
       // this never fails the add-book request.

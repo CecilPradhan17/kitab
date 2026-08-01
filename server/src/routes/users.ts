@@ -112,6 +112,21 @@ usersRouter.patch("/me/avatar", requireAuth, async (req, res) => {
   let resized: Buffer;
   try {
     const raw = await s3.send(new GetObjectCommand({ Bucket: S3_BUCKET_NAME, Key: key }));
+
+    // A presigned PUT can't enforce the fileSize the client declared when the
+    // URL was issued (see the comment on POST /me/avatar below) — so an
+    // attacker can PUT something far larger than MAX_AVATAR_BYTES straight to
+    // S3 and have this endpoint buffer the whole thing into memory. Check the
+    // actual stored size before reading the body at all, and clean up the
+    // oversized object instead of leaving it in the bucket indefinitely.
+    if (raw.ContentLength === undefined || raw.ContentLength > MAX_AVATAR_BYTES) {
+      s3.send(new DeleteObjectCommand({ Bucket: S3_BUCKET_NAME, Key: key })).catch((err) => {
+        console.error("Failed to clean up oversized raw avatar upload:", err);
+      });
+      res.status(400).json({ error: "Uploaded file is too large" });
+      return;
+    }
+
     const rawBytes = await raw.Body!.transformToByteArray();
     resized = await sharp(Buffer.from(rawBytes))
       .resize(AVATAR_SIZE, AVATAR_SIZE, { fit: "cover" })

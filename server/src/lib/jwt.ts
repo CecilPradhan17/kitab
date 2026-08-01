@@ -25,5 +25,9 @@ export function signToken(payload: JwtPayload): string {
 // Throws if the token is invalid or expired — callers (requireAuth middleware)
 // catch this and return 401.
 export function verifyToken(token: string): JwtPayload {
-  return jwt.verify(token, SECRET) as JwtPayload;
+  // Tokens are only ever signed HS256 (signToken above never specifies an
+  // algorithm, which defaults to HS256) — pinning it here removes any
+  // dependence on the jsonwebtoken library's default set of acceptable
+  // algorithms for verification.
+  return jwt.verify(token, SECRET, { algorithms: ["HS256"] }) as JwtPayload;
 }

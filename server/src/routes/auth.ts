@@ -1,6 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import rateLimit from "express-rate-limit";
+import { randomUUID } from "crypto";
 import { pool } from "../db";
 import { signToken } from "../lib/jwt";
 import { requireAuth } from "../middleware/requireAuth";
@@ -8,6 +9,20 @@ import { requireAuth } from "../middleware/requireAuth";
 export const authRouter = Router();
 
 const MAX_DISPLAY_NAME_LENGTH = 50; // mirrors the display_name_length CHECK constraint (server/db/10_display_name_length_constraint.sql)
+
+// bcrypt's cost factor is embedded in each generated hash, so raising this
+// only affects new registrations going forward — existing cost-10 hashes in
+// the DB keep verifying fine, no migration needed.
+const BCRYPT_ROUNDS = 12;
+
+// A hash of a random, never-reused value, computed once at startup (not a
+// hardcoded string literal) so its cost factor always matches BCRYPT_ROUNDS —
+// a literal would silently drift to a different (and thus timing-
+// distinguishable) cost factor whenever BCRYPT_ROUNDS changes. The input
+// being random is irrelevant: nothing ever successfully compares against
+// this hash, it exists purely to give the "user not found" path the same
+// bcrypt.compare cost as the "user found" path — see login below.
+const DUMMY_HASH = bcrypt.hashSync(randomUUID(), BCRYPT_ROUNDS);
 
 // Keyed by IP (the default keyGenerator), not user id — unlike
 // avatarUploadLimiter in users.ts, these routes are unauthenticated, so
@@ -65,7 +80,7 @@ authRouter.post("/register", authLimiter, async (req, res) => {
   }
 
   try {
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     const result = await pool.query<{ id: string; username: string; display_name: string | null }>(
       `INSERT INTO users (username, email, password_hash, display_name)
@@ -115,8 +130,16 @@ authRouter.post("/login", authLimiter, async (req, res) => {
 
     const user = result.rows[0];
 
+    // Always run bcrypt.compare, even when no user was found — comparing
+    // against DUMMY_HASH in that case instead of short-circuiting. Without
+    // this, bcrypt.compare is skipped entirely for unknown emails, and its
+    // cost (tens of milliseconds) is easily distinguishable from the
+    // near-instant "no such user" response, letting a timing attack enumerate
+    // valid emails. The dummy compare flattens that difference.
+    const passwordMatches = await bcrypt.compare(password, user?.password_hash ?? DUMMY_HASH);
+
     // Deliberately vague — don't reveal whether the email exists.
-    if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+    if (!user || !passwordMatches) {
       res.status(401).json({ error: "invalid email or password" });
       return;
     }

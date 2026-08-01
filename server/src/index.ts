@@ -42,6 +42,16 @@ function validateEnv(): void {
 
 validateEnv();
 
+// Node >=15 already crashes the process on an unhandled promise rejection by
+// default — registering this handler doesn't change that behavior, it just
+// makes the log format explicit and the crash-loudly intent visible in code
+// instead of relying on a runtime default the reader has to already know
+// about. Failures should be loud, not silent.
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason);
+  process.exit(1);
+});
+
 /**
  * Server entry point.
  *

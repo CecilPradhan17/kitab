@@ -1,3 +1,11 @@
+-- DEV ONLY — never run against production. See deployment checklist.
+--
+-- The dev_ prefix is deliberate: docker-entrypoint-initdb.d runs *.sql in
+-- alphabetical order, and letters sort after digits, so dev_ files run last —
+-- after the schema and all CHECK constraints (whose limits this seed data
+-- satisfies). The prefix also makes the two non-production files impossible
+-- to miss when applying migrations to a real environment by hand.
+--
 -- Seed data — the 8 books from src/features/library/mockBooks.ts, with their
 -- existing UUIDs preserved. Gives chunk 3's read endpoints real data to return.
 --

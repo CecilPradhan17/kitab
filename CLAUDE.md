@@ -484,12 +484,13 @@ server/
       customBooks.ts             ← presigned cover upload + create for user-submitted books
   /db
     01_schema.sql
-    02_seed.sql
     03_users.sql              ← users table + user_id FK on books
-    04_dev_seed.sql           ← dev user cecildev
     05_book_covers.sql         ← book_covers cache table + books.cover_texture_url
     06_custom_books.sql         ← custom_books table + books.custom_book_id
     07_spine_color.sql          ← spine_color on book_covers, custom_books, books
+    08–13_*.sql                 ← CHECK length constraints mirrored by API validation
+    dev_02_seed.sql             ← DEV ONLY: mock library seed — never run in production
+    dev_04_seed.sql             ← DEV ONLY: dev user cecildev (known password) — never run in production
   docker-compose.yml
 ```
 
@@ -547,7 +548,17 @@ In rough priority order:
 1. **Deployment** — Vercel (frontend) + Railway or Render (Express). Env vars
    to wire: `API_URL` (server-side) and `NEXT_PUBLIC_API_URL` (client-side)
    pointing at the deployed Express URL; `FRONTEND_ORIGIN` on Express pointing
-   at the Vercel URL.
+   at the Vercel URL. Deployment-day security checklist:
+   - Set `NODE_ENV=production` on the Express host (also makes
+     `FRONTEND_ORIGIN` required by `validateEnv()`).
+   - Add `app.set("trust proxy", 1)` in `server/src/app.ts` — required for
+     the IP-keyed rate limiters (auth, book-search, general) to key
+     per-client instead of per-proxy. Only correct once actually behind
+     Railway/Render's proxy, which is why it isn't set yet.
+   - When applying `server/db/` migrations to production, run ONLY the
+     numbered files (01–13) — the two `dev_`-prefixed seed files are dev-only
+     and must never run against production (`dev_04_seed.sql` creates a user
+     with a publicly-known password and blanket-assigns orphaned book rows).
 2. **Spine color at ingest** — Move dominant-hue extraction server-side (via
    `sharp`) and store it as a `spineColor` field on the book, so the frontend
    reads it from props instead of computing it client-side on every load. Now
@@ -555,6 +566,21 @@ In rough priority order:
    cover bytes are fetched/resized server-side.
 4. **"Share to Instagram"** — Web Share API on mobile. Placeholder comment
    already in `ExportModal.tsx`.
+
+## Known deferred issues
+
+Latent problems identified in review, deliberately not fixed yet because
+nothing exercises them today. Address the moment the triggering feature is
+built:
+
+- **User deletion vs. custom books FK conflict.** `custom_books.created_by`
+  is `ON DELETE CASCADE` (06_custom_books.sql), but other users' `books`
+  rows reference those catalog entries via `custom_book_id` with default
+  `NO ACTION` — so deleting a user who submitted a custom book that anyone
+  else has added will fail on the FK. There is no delete-account endpoint
+  yet, so this is dormant. When one is built: make `created_by` nullable
+  first, then change it to `ON DELETE SET NULL`, so shared catalog entries
+  outlive their submitter.
 
 ## When to update this file
 

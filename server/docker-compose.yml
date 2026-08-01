@@ -1,9 +1,12 @@
 # Local Postgres for development. Run from server/ with: docker compose up -d
 #
 # On the FIRST boot of a fresh volume, Postgres auto-runs every *.sql file in
-# /docker-entrypoint-initdb.d (we mount ./db there) in alphabetical order — so
-# 01_schema.sql then 02_seed.sql. This means `docker compose up` alone creates
-# and seeds the database; there is no manual psql step.
+# /docker-entrypoint-initdb.d (we mount ./db there) in alphabetical order:
+# the numbered migrations (01_, 03_, 05_...) first, then the dev_-prefixed
+# seed files last (letters sort after digits in the locale initdb uses). The
+# dev_ prefix marks the two files that must NEVER run in production — see
+# the deployment checklist in CLAUDE.md. `docker compose up` alone still
+# creates and seeds the database; there is no manual psql step.
 #
 # These init scripts ONLY run on a fresh (empty) data volume. To re-apply after
 # changing the schema or seed:  docker compose down -v && docker compose up -d

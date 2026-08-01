@@ -1,6 +1,10 @@
+-- DEV ONLY — never run against production. See deployment checklist.
+-- (Creates a user with a publicly-known password and blanket-assigns any
+-- orphaned books rows to it.)
+--
 -- Dev-only seed: creates a known local user and assigns the seeded books to them.
--- Run after 03_users.sql on an existing dev volume:
---   docker exec -i kitab-db psql -U kitab -d kitab < server/db/04_dev_seed.sql
+-- Run after 03_users.sql and dev_02_seed.sql on an existing dev volume:
+--   docker exec -i kitab-db psql -U kitab -d kitab < server/db/dev_04_seed.sql
 --
 -- Password is 'password' (bcrypt, 10 rounds) — local dev only, never in prod.
 

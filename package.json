@@ -8,12 +8,13 @@
     "start": "next start",
     "lint": "eslint"
   },
+  "//": "npm audit shows 3 accepted high findings against next: Next's own bundled postcss copy and its sharp dep, unfixed in every released Next version (advisories span through 16.3 previews). Exposure here is low: the postcss CVEs are build-time, and Next's sharp only runs in the /_next/image optimization endpoint, which this app does not feed user-controlled images through. Do NOT run npm audit fix --force - it 'fixes' this by downgrading next to 9.x. Re-check npm audit after each Next release and drop this note once clean.",
   "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "framer-motion": "^12.42.2",
     "html-to-image": "^1.11.13",
-    "next": "16.2.9",
+    "next": "^16.2.12",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "three": "^0.184.0"

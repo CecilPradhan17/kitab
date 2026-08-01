@@ -28,7 +28,10 @@ export function createApp(): Express {
   app.use(cors({ origin: FRONTEND_ORIGIN }));
 
   // Parse JSON request bodies into req.body. Needed once we add write endpoints.
-  app.use(express.json());
+  // Capped at 10kb: every legitimate payload in this API is tiny (the longest
+  // field is a 280-char bio), so this is generous headroom while stopping
+  // oversized-body abuse before any route logic runs.
+  app.use(express.json({ limit: "10kb" }));
 
   // Hand-set security headers, deliberately not pulled in via helmet — this
   // API serves JSON only, so only a handful of helmet's headers are actually
@@ -115,6 +118,19 @@ export function createApp(): Express {
 
     if (isJsonParseError) {
       res.status(400).json({ error: "Invalid JSON body" });
+      return;
+    }
+
+    // Raised by express.json's limit (set above) when a request body exceeds
+    // 10kb — without this mapping an oversized body would fall through to
+    // the generic 500 below instead of a proper 413.
+    const isBodyTooLarge =
+      (err as { type?: string })?.type === "entity.too.large" ||
+      (err as { status?: number; statusCode?: number })?.status === 413 ||
+      (err as { status?: number; statusCode?: number })?.statusCode === 413;
+
+    if (isBodyTooLarge) {
+      res.status(413).json({ error: "Request body too large" });
       return;
     }
 

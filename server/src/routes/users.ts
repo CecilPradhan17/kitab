@@ -107,7 +107,9 @@ usersRouter.patch("/me/avatar", requireAuth, async (req, res) => {
   // client could hand us any S3 key (someone else's upload, or an arbitrary
   // string) and have us fetch/process/publish it as their avatar.
   const expectedPrefix = `avatars/raw/${req.user!.userId}/`;
-  if (!key || !key.startsWith(expectedPrefix)) {
+  // The TS cast above doesn't validate runtime shape — a non-string truthy
+  // key (e.g. an array) would otherwise throw a TypeError on .startsWith.
+  if (typeof key !== "string" || !key.startsWith(expectedPrefix)) {
     res.status(400).json({ error: "Invalid or missing upload key" });
     return;
   }
@@ -215,6 +217,13 @@ usersRouter.patch("/me", requireAuth, async (req, res) => {
   const values: unknown[] = [];
 
   if (displayName !== undefined) {
+    // req.body is untyped JSON despite the TS cast above — a number/object/
+    // array would otherwise slip past the length check below and straight
+    // into the SQL parameter, so the runtime shape must be checked explicitly.
+    if (displayName !== null && typeof displayName !== "string") {
+      res.status(400).json({ error: "displayName must be a string" });
+      return;
+    }
     if (typeof displayName === "string" && displayName.length > MAX_DISPLAY_NAME_LENGTH) {
       res.status(400).json({ error: `displayName must be ${MAX_DISPLAY_NAME_LENGTH} characters or fewer` });
       return;
@@ -223,6 +232,10 @@ usersRouter.patch("/me", requireAuth, async (req, res) => {
     values.push(displayName ?? null);
   }
   if (bio !== undefined) {
+    if (bio !== null && typeof bio !== "string") {
+      res.status(400).json({ error: "bio must be a string" });
+      return;
+    }
     if (typeof bio === "string" && bio.length > MAX_BIO_LENGTH) {
       res.status(400).json({ error: `Bio must be ${MAX_BIO_LENGTH} characters or fewer` });
       return;

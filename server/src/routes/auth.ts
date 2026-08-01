@@ -59,6 +59,14 @@ authRouter.post("/register", authLimiter, async (req, res) => {
     return;
   }
 
+  // Deliberately a pragmatic shape check, not full RFC 5322 — the goal is
+  // catching typos and junk, not implementing the grammar; the unique index
+  // on users.email remains the real integrity control.
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ error: "a valid email address is required" });
+    return;
+  }
+
   // "me" is reserved — it's a path segment used by PATCH /api/users/me.
   if (username === "me") {
     res.status(400).json({ error: "'me' is a reserved username" });
@@ -116,7 +124,9 @@ authRouter.post("/register", authLimiter, async (req, res) => {
 authRouter.post("/login", authLimiter, async (req, res) => {
   const { email, password } = req.body as { email?: string; password?: string };
 
-  if (!email || !password) {
+  // A JSON body can carry any type — a non-string here would previously reach
+  // bcrypt.compare and throw into the 500 handler.
+  if (typeof email !== "string" || email === "" || typeof password !== "string" || password === "") {
     res.status(400).json({ error: "email and password are required" });
     return;
   }

@@ -20,9 +20,11 @@ export default function LibraryGrid({
   // add-book tile instead (below), so there's always a way to get started.
   if (books.length === 0 && !isOwner) {
     return (
-      <p className="font-sans text-sm text-muted">
-        No books yet — the shelves are waiting.
-      </p>
+      <div className="flex w-full justify-center py-16">
+        <p className="max-w-sm text-center font-sans text-lg font-medium text-accent">
+          The user has not added any books yet, tell them to start now!
+        </p>
+      </div>
     );
   }
 

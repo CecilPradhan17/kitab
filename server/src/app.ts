@@ -23,6 +23,22 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN ?? "http://localhost:3000";
 export function createApp(): Express {
   const app = express();
 
+  // Render (and similar PaaS hosts) terminate TLS at a reverse proxy in
+  // front of this app, so every request Express sees actually originates
+  // from that proxy's IP, with the real client IP carried in
+  // X-Forwarded-For instead. Without this, req.ip is the proxy's IP for
+  // every request — the IP-keyed rate limiters (authLimiter,
+  // bookSearchLimiter, generalApiLimiter below) would then count all
+  // traffic from all users as a single client and either throttle everyone
+  // together or (with express-rate-limit's IP validation) throw outright.
+  // `1` trusts exactly one hop, matching a single reverse proxy — not `true`,
+  // which would trust the whole X-Forwarded-For chain and let a client spoof
+  // its own IP by setting that header directly. Gated to production only:
+  // local dev has no proxy in front, so req.ip is already correct there.
+  if (process.env.NODE_ENV === "production") {
+    app.set("trust proxy", 1);
+  }
+
   // Allow the browser frontend to call this API cross-origin. Scoped to a single
   // known origin rather than "*" — we only serve our own frontend.
   app.use(cors({ origin: FRONTEND_ORIGIN }));

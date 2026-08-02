@@ -559,6 +559,13 @@ In rough priority order:
      numbered files (01–13) — the two `dev_`-prefixed seed files are dev-only
      and must never run against production (`dev_04_seed.sql` creates a user
      with a publicly-known password and blanket-assigns orphaned book rows).
+   - Add the production frontend origin (the Vercel URL) to the S3 bucket's
+     CORS allowed-origins — presigned PUT uploads (avatars, custom covers)
+     are browser-direct and CORS-gated by the bucket config, which currently
+     only allows the localhost dev origin. curl testing will not catch this
+     (no preflight); it's the same trap hit during the original avatar build.
+   - Generate a fresh production `JWT_SECRET` (`openssl rand -hex 32`) —
+     never reuse the dev value.
 2. **Spine color at ingest** — Move dominant-hue extraction server-side (via
    `sharp`) and store it as a `spineColor` field on the book, so the frontend
    reads it from props instead of computing it client-side on every load. Now

@@ -110,7 +110,7 @@ export default function LandingPage() {
           </h3>
           <CtaArrow />
           <Link
-            href="/cecildev"
+            href="/cecil_pradhan"
             className="rounded-full border border-foreground/25 px-8 py-3.5 font-sans text-sm font-semibold uppercase tracking-[0.2em] text-foreground transition-colors hover:border-foreground/50"
           >
             View my library

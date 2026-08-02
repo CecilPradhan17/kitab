@@ -35,8 +35,6 @@ export default function ProfileHeader({
   const showFallback = !avatarUrl || imgFailed;
   const initial = shownName.charAt(0).toUpperCase() || "·";
 
-  const profileUrl = `kitab.com/u/${username}`;
-
   // Brief "Copied ✓" confirmation on the copy button. The timeout is cleared
   // on unmount (and on re-copy) so it can't set state on a dead component.
   const [copied, setCopied] = useState(false);
@@ -49,6 +47,13 @@ export default function ProfileHeader({
 
   const handleCopy = async () => {
     try {
+      // Built from window.location.origin (not a hardcoded domain or the
+      // build-time NEXT_PUBLIC_SITE_URL) so it's always correct for
+      // whichever domain actually served this page - prod, a Vercel preview,
+      // or localhost - with no drift if a custom domain gets added later.
+      // /[username] is the real route (see CLAUDE.md's "Library page"
+      // section) - there is no /u/ prefix.
+      const profileUrl = `${window.location.origin}/${username}`;
       await navigator.clipboard.writeText(profileUrl);
       setCopied(true);
       if (copiedTimer.current) clearTimeout(copiedTimer.current);

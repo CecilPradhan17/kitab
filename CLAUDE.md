@@ -548,7 +548,13 @@ In rough priority order:
 1. **Deployment** — Vercel (frontend) + Railway or Render (Express). Env vars
    to wire: `API_URL` (server-side) and `NEXT_PUBLIC_API_URL` (client-side)
    pointing at the deployed Express URL; `FRONTEND_ORIGIN` on Express pointing
-   at the Vercel URL. Deployment-day security checklist:
+   at the Vercel URL; `NEXT_PUBLIC_SITE_URL` on Vercel set to the deployed
+   frontend URL itself (e.g. `https://kitab-dun.vercel.app`) — without it,
+   `metadataBase` in `src/app/layout.tsx` falls back to `localhost:3000`, so
+   every og:image/twitter:image URL on the live site points at localhost and
+   silently fails for every link-preview crawler (missed on the first
+   deploy, 2026-08-02 — no crawler error surfaces this, it just falls back
+   to scraping the page's DOM for an image). Deployment-day security checklist:
    - Set `NODE_ENV=production` on the Express host (also makes
      `FRONTEND_ORIGIN` required by `validateEnv()`).
    - Add `app.set("trust proxy", 1)` in `server/src/app.ts` — required for

@@ -7,8 +7,11 @@
     /* CommonJS keeps imports simple (no ".js" extension needed in import paths),
        which is one less gotcha while learning. tsx runs CommonJS fine in dev. */
     "module": "CommonJS",
-    "moduleResolution": "node",
-    "ignoreDeprecations": "6.0",
+    /* No explicit moduleResolution: TypeScript's default for module=CommonJS is
+       already classic Node-style resolution (the old "node"/"node10" value) —
+       that legacy name was deprecated, then fully removed in TS 6, breaking a
+       build that set it explicitly. Omitting it gets the same resolution
+       behavior without depending on a name TS could remove again later. */
 
     /* Compiled output goes to dist/, source lives in src/. */
     "rootDir": "src",

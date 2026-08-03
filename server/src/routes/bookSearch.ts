@@ -21,13 +21,15 @@ interface OpenLibraryDoc {
   title?: string;
   author_name?: string[];
   isbn?: string[];
+  // Open Library's own signal that a cover actually exists for this doc -
+  // more reliable than assuming every ISBN has one at the covers endpoint.
+  cover_i?: number;
 }
 
 const OPEN_LIBRARY_SEARCH = "https://openlibrary.org/search.json";
 
-// How many raw docs to request from Open Library. We over-fetch slightly versus
-// what we'll likely show, since some docs get dropped in shaping (no ISBN, etc.).
-const SEARCH_LIMIT = 20;
+// How many raw docs to request from Open Library.
+const SEARCH_LIMIT = 10;
 
 // Custom books are shown first and are meant to be a short, high-signal list
 // (community contributions), not a second full catalog — capped well below
@@ -82,7 +84,7 @@ async function searchCustomBooks(q: string): Promise<BookSearchResult[]> {
 async function searchOpenLibrary(q: string): Promise<BookSearchResult[]> {
   const url = new URL(OPEN_LIBRARY_SEARCH);
   url.searchParams.set("q", q);
-  url.searchParams.set("fields", "title,author_name,isbn");
+  url.searchParams.set("fields", "title,author_name,isbn,cover_i");
   url.searchParams.set("limit", String(SEARCH_LIMIT));
 
   const response = await fetch(url, {
@@ -98,20 +100,22 @@ async function searchOpenLibrary(q: string): Promise<BookSearchResult[]> {
   const docs = data.docs ?? [];
 
   // Shape each doc to what the picker needs, dropping anything missing the
-  // essentials: a title, an author, and at least one ISBN. No ISBN means no
-  // reliable cover and nothing to POST, so such results aren't addable.
+  // essentials: a title, an author, at least one ISBN, and - per cover_i -
+  // an actual cover image. No ISBN means nothing to POST; no cover_i means
+  // the picker would show a broken/placeholder image, which is worse than
+  // just not listing the result.
   const results: BookSearchResult[] = [];
   for (const doc of docs) {
     const isbn = doc.isbn?.[0];
     const author = doc.author_name?.[0];
-    if (!doc.title || !author || !isbn) continue;
+    if (!doc.title || !author || !isbn || !doc.cover_i) continue;
 
     results.push({
       source: "openlibrary",
       title: doc.title,
       author,
       isbn,
-      coverUrl: `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`,
+      coverUrl: `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`,
     });
   }
 

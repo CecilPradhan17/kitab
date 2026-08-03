@@ -345,7 +345,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
 
             <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
               <div className="flex gap-4">
-                <label className="flex flex-1 flex-col gap-1.5">
+                <label className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
                     Started
                   </span>
@@ -356,7 +356,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
                     className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-sans text-sm text-foreground outline-none transition-colors focus:border-accent/60 [color-scheme:dark]"
                   />
                 </label>
-                <label className="flex flex-1 flex-col gap-1.5">
+                <label className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
                     Finished
                   </span>
@@ -427,11 +427,20 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
                 {showCustomInfo && (
                   <div
                     role="tooltip"
-                    className="absolute left-1/2 top-full z-10 mt-2.5 w-64 -translate-x-1/2 rounded-lg border border-white/10 bg-[#161616] p-3 font-sans text-xs leading-relaxed text-muted shadow-xl shadow-black/60"
+                    // Anchored to the icon's right edge (not centered) below
+                    // sm - "Add your own book" + the icon nearly fill the
+                    // mobile modal's content width, so a centered w-64
+                    // tooltip pushed half its width past the panel's right
+                    // edge, where overflow-hidden clipped it. Hanging it
+                    // from the right edge instead means it only ever extends
+                    // left, where the room actually is; max-w caps it for
+                    // narrower phones too. Centered-under-icon on sm+ is
+                    // unchanged - there's enough room there already.
+                    className="absolute right-0 top-full z-10 mt-2.5 w-64 max-w-[calc(100vw-6.5rem)] rounded-lg border border-white/10 bg-[#161616] p-3 font-sans text-xs leading-relaxed text-muted shadow-xl shadow-black/60 sm:left-1/2 sm:right-auto sm:max-w-none sm:-translate-x-1/2"
                   >
                     <span
                       aria-hidden
-                      className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-l border-t border-white/10 bg-[#161616]"
+                      className="absolute -top-1 right-3 h-2 w-2 rotate-45 border-l border-t border-white/10 bg-[#161616] sm:left-1/2 sm:right-auto sm:-translate-x-1/2"
                     />
                     Only add a book if it hasn&rsquo;t been added before, the
                     information is inaccurate, or the cover quality is bad.

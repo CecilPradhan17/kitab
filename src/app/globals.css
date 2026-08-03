@@ -66,3 +66,18 @@ body {
     opacity: 1;
   }
 }
+
+/* iOS Safari auto-zooms the whole page on focus of any text input/textarea/
+   select whose computed font-size is under 16px - several modal form fields
+   use text-sm (14px) for the compact desktop look, which is fine on desktop
+   but on mobile that zoom is what reads as the modal "distorting" and losing
+   its fixed position the moment the keyboard opens. Overriding to 16px only
+   below the sm breakpoint prevents the zoom without changing anything on
+   desktop, where these fields keep their text-sm classes visually. */
+@media (max-width: 639px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

@@ -344,7 +344,14 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
             </div>
 
             <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-5">
-              <div className="flex gap-4">
+              {/* Stacked on mobile, side by side from sm up - min-w-0 alone
+                  let the flex box shrink, but a native date input's own
+                  day/month/year rendering has a floor the browser won't
+                  compress below, so on a narrow screen it painted past its
+                  box into its sibling regardless. Giving each field the
+                  full row width on mobile sidesteps that instead of fighting
+                  it. */}
+              <div className="flex flex-col gap-4 sm:flex-row">
                 <label className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
                     Started

@@ -22,7 +22,7 @@ export default function LibraryGrid({
     return (
       <div className="flex w-full justify-center py-16">
         <p className="max-w-sm text-center font-sans text-lg font-medium text-accent">
-          The user has not added any books yet, tell them to start now!
+          The user has not added any books yet, tell them to start now :)
         </p>
       </div>
     );

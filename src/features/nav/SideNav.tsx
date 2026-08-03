@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import FocusGuard from "@/features/a11y/FocusGuard";
 import { useFocusTrap } from "@/features/a11y/useFocusTrap";
@@ -46,9 +47,15 @@ export default function SideNav() {
     };
   }, [open]);
 
-  // The drawer's only item is "Log out", so there's nothing to show a
-  // logged-out visitor (login page, shared profile links).
-  if (!loggedIn) return null;
+  // "/", "/login", and "/register" all have their own sign-up/login CTAs
+  // already on the page (LandingPage's header, the auth forms themselves),
+  // so the drawer would be redundant there for a logged-out visitor.
+  // Everything else is a /[username] profile route - the one place a
+  // logged-out visitor can land with no other way back to log in, since
+  // shared profile links are public and reachable with no session at all.
+  const isAuthRoute =
+    pathname === "/" || pathname === "/login" || pathname === "/register";
+  if (!loggedIn && isAuthRoute) return null;
 
   function handleLogout() {
     // Auth is a stateless JWT in localStorage, so logout is purely
@@ -117,13 +124,23 @@ export default function SideNav() {
 
         <div className="my-6 h-px bg-white/10" />
 
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="py-2 text-left font-sans text-xs uppercase tracking-[0.2em] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
-        >
-          Log out
-        </button>
+        {loggedIn ? (
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="py-2 text-left font-sans text-xs uppercase tracking-[0.2em] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Log out
+          </button>
+        ) : (
+          <Link
+            href="/login"
+            onClick={() => setOpen(false)}
+            className="py-2 text-left font-sans text-xs uppercase tracking-[0.2em] text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            Log in
+          </Link>
+        )}
         <FocusGuard position="last" />
       </nav>
     </>

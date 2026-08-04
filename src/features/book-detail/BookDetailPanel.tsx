@@ -267,13 +267,17 @@ export default function BookDetailPanel({
                     {draft.length}/{MAX_QUOTE_LENGTH}
                   </span>
                 </div>
+                {/* rows=6 sizes the desktop height (h-auto lets it govern
+                    from sm up); a shorter explicit h-32 takes over on mobile,
+                    where 6 rows made the editing panel noticeably taller than
+                    the read-only quote view it replaces. */}
                 <textarea
                   value={draft}
                   onChange={(event) => setDraft(event.target.value)}
                   rows={6}
                   maxLength={MAX_QUOTE_LENGTH}
                   autoFocus
-                  className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-serif text-[clamp(1rem,2.5vh,1.125rem)] italic leading-relaxed text-foreground/90 outline-none transition-colors focus:border-accent/60 sm:text-lg"
+                  className="h-32 w-full resize-none rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-serif text-[clamp(1rem,2.5vh,1.125rem)] italic leading-relaxed text-foreground/90 outline-none transition-colors focus:border-accent/60 sm:h-auto sm:text-lg"
                 />
 
                 {quoteError && (

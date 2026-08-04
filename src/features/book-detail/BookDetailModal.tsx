@@ -71,6 +71,14 @@ export default function BookDetailModal({
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
   function handleTouchStart(event: React.TouchEvent) {
+    // Dragging inside the 3D book viewer rotates it (OrbitControls) - the
+    // touch still bubbles up here regardless, so skip swipe tracking
+    // entirely for gestures that start there instead of misreading a
+    // rotate-drag as a page-navigation swipe.
+    if (event.target instanceof Element && event.target.closest("[data-swipe-ignore]")) {
+      touchStartRef.current = null;
+      return;
+    }
     const touch = event.touches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
   }
@@ -107,77 +115,85 @@ export default function BookDetailModal({
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm sm:p-6"
     >
-      <div
-        ref={panelRef}
-        onClick={(event) => event.stopPropagation()}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        className="relative flex w-full max-w-3xl max-h-full flex-col overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80 sm:p-12"
-      >
-        <FocusGuard position="first" />
-        {/* Close affordance — outside BookDetailPanel on purpose: it's modal
-            chrome, not book content, so it's clickable immediately rather
-            than waiting on the scene. z-20 is required, not decorative: the
-            3D viewer's WebGL canvas gets its own browser compositing layer
-            and can paint above plain z-auto siblings, which on mobile's
-            single-column layout puts it directly under this corner and
-            silently swallows taps without an explicit z-index to win against it. */}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+      {/* Wraps the panel + nav arrows together so the arrows can anchor to
+          the panel's own edges (via this wrapper's position:relative) and
+          track its actual width/position across breakpoints, instead of
+          being pinned to fixed viewport-edge coordinates unrelated to the
+          modal itself. */}
+      <div className="relative w-full max-w-3xl">
+        <div
+          ref={panelRef}
+          onClick={(event) => event.stopPropagation()}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className="relative flex w-full max-h-full flex-col overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80 sm:p-12"
         >
-          <span aria-hidden className="text-xl leading-none">
-            &times;
-          </span>
-        </button>
+          <FocusGuard position="first" />
+          {/* Close affordance — outside BookDetailPanel on purpose: it's modal
+              chrome, not book content, so it's clickable immediately rather
+              than waiting on the scene. z-20 is required, not decorative: the
+              3D viewer's WebGL canvas gets its own browser compositing layer
+              and can paint above plain z-auto siblings, which on mobile's
+              single-column layout puts it directly under this corner and
+              silently swallows taps without an explicit z-index to win against it. */}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <span aria-hidden className="text-xl leading-none">
+              &times;
+            </span>
+          </button>
 
-        <BookDetailPanel
-          key={book.id}
-          book={book}
-          isOwner={isOwner}
-          exporting={exporting}
-          onClose={onClose}
-          onShare={() => setExporting(true)}
-          onBookUpdated={onBookUpdated}
-          onBookDeleted={onBookDeleted}
-        />
-        <FocusGuard position="last" />
+          <BookDetailPanel
+            key={book.id}
+            book={book}
+            isOwner={isOwner}
+            exporting={exporting}
+            onClose={onClose}
+            onShare={() => setExporting(true)}
+            onBookUpdated={onBookUpdated}
+            onBookDeleted={onBookDeleted}
+          />
+          <FocusGuard position="last" />
+        </div>
+
+        {/* Nav arrows, anchored to the panel wrapper above (not the
+            viewport) — flush against its edge on mobile where there's no
+            room outside it, moving out into the surrounding gutter from sm
+            up where there's actual space beside the modal. z-20 for the
+            same WebGL-compositing reason as the close button above.
+            stopPropagation keeps a click from also closing the modal via
+            the backdrop's own onClick. */}
+        {hasPrev && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onNavigate("prev");
+            }}
+            aria-label="Previous book"
+            className="absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent sm:-left-14"
+          >
+            <ChevronIcon direction="left" />
+          </button>
+        )}
+        {hasNext && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onNavigate("next");
+            }}
+            aria-label="Next book"
+            className="absolute right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent sm:-right-14"
+          >
+            <ChevronIcon direction="right" />
+          </button>
+        )}
       </div>
-
-      {/* Nav arrows — siblings of the panel (not inside it), fixed to the
-          viewport edges so they stay put regardless of the panel's own
-          width, matching a standard lightbox/carousel layout. z-20 for the
-          same WebGL-compositing reason as the close button above.
-          stopPropagation keeps a click from also closing the modal via the
-          backdrop's own onClick. */}
-      {hasPrev && (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onNavigate("prev");
-          }}
-          aria-label="Previous book"
-          className="fixed left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent sm:left-6"
-        >
-          <ChevronIcon direction="left" />
-        </button>
-      )}
-      {hasNext && (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onNavigate("next");
-          }}
-          aria-label="Next book"
-          className="fixed right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent sm:right-6"
-        >
-          <ChevronIcon direction="right" />
-        </button>
-      )}
     </div>
 
     {/* Export modal — a sibling (not a child) of the backdrop so clicks on its

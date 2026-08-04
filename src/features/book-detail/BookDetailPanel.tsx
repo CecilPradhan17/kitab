@@ -215,7 +215,15 @@ export default function BookDetailPanel({
             {ordinal(book.bookNumber)} book {isOwner ? "you've read" : "read"}
           </span>
 
-          <div className="relative aspect-[2/3] w-[clamp(11rem,24vh,13rem)] sm:w-72">
+          {/* data-swipe-ignore: BookDetailModal's prev/next swipe detection
+              checks for this so dragging here to orbit the 3D book (via
+              OrbitControls) isn't also read as a page-navigation swipe -
+              touch events bubble up from the canvas regardless of
+              OrbitControls' own handling. */}
+          <div
+            data-swipe-ignore
+            className="relative aspect-[2/3] w-[clamp(11rem,24vh,13rem)] sm:w-72"
+          >
             <div
               aria-hidden
               className="pointer-events-none absolute inset-[-20%] rounded-full opacity-70 blur-2xl"

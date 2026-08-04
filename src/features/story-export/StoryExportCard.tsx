@@ -81,7 +81,7 @@ export default function StoryExportCard({
           style={{ background: `${ACCENT}80` }}
         />
         <span
-          className="font-sans text-[28px] font-medium uppercase tracking-[0.5em] text-white"
+          className="font-logo text-[28px] font-medium uppercase tracking-[0.5em] text-white"
           style={{ paddingLeft: "0.5em" /* offset the trailing letter-spacing */ }}
         >
           Kitab

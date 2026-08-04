@@ -22,10 +22,6 @@ interface AddBookModalProps {
   onAdded: () => void;
 }
 
-// Wait this long after the last keystroke before searching, so typing a query
-// fires one request instead of one per character.
-const SEARCH_DEBOUNCE_MS = 300;
-
 // Ignore queries shorter than this — too broad to be useful, and avoids
 // hammering the API on the first character or two.
 const MIN_QUERY_LENGTH = 2;
@@ -142,10 +138,13 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
     };
   }, [customPreviewUrl]);
 
-  // Debounced search. Re-runs on every keystroke but only the last one in a
-  // 300ms window actually fetches; `cancelled` ignores a stale response that
-  // resolves after the query has moved on.
-  useEffect(() => {
+  // Search fires only on explicit submit (button click or Enter) — no
+  // longer a debounced auto-search on every keystroke. `requestId` ignores a
+  // stale response if the user fires off a second search before the first
+  // one resolves.
+  const searchRequestId = useRef(0);
+
+  async function handleSearch() {
     const trimmed = query.trim();
 
     if (trimmed.length < MIN_QUERY_LENGTH) {
@@ -155,31 +154,30 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
       return;
     }
 
-    let cancelled = false;
+    const requestId = ++searchRequestId.current;
     setSearching(true);
-
-    const timer = setTimeout(async () => {
-      try {
-        const found = await searchBooks(trimmed);
-        if (!cancelled) {
-          setResults(found);
-          setError(null);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setResults([]);
-          setError(err instanceof Error && err.message ? err.message : "Search failed. Please try again.");
-        }
-      } finally {
-        if (!cancelled) setSearching(false);
+    try {
+      const found = await searchBooks(trimmed);
+      if (requestId === searchRequestId.current) {
+        setResults(found);
+        setError(null);
       }
-    }, SEARCH_DEBOUNCE_MS);
+    } catch (err) {
+      if (requestId === searchRequestId.current) {
+        setResults([]);
+        setError(err instanceof Error && err.message ? err.message : "Search failed. Please try again.");
+      }
+    } finally {
+      if (requestId === searchRequestId.current) setSearching(false);
+    }
+  }
 
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [query]);
+  // The input lives in a <form> specifically so Enter submits it natively,
+  // in addition to the explicit search button.
+  function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    handleSearch();
+  }
 
   // Autofocus the search input when the modal opens (search phase only).
   const inputRef = useRef<HTMLInputElement>(null);
@@ -575,14 +573,37 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
               Find a book
             </h2>
 
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by title or author…"
-              className="mt-4 w-full rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-sans text-sm text-foreground placeholder:text-muted/90 outline-none transition-colors focus:border-accent/60"
-            />
+            {/* A <form> (not just a bare input) so Enter submits it
+                natively, matching the explicit search button next to it -
+                search no longer fires on every keystroke. */}
+            <form onSubmit={handleSearchSubmit} className="relative mt-4">
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search by title or author…"
+                className="w-full rounded-lg border border-white/10 bg-black/30 py-3 pl-4 pr-12 font-sans text-sm text-foreground placeholder:text-muted/90 outline-none transition-colors focus:border-accent/60"
+              />
+              <button
+                type="submit"
+                aria-label="Search"
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-accent focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+                  <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.5" />
+                  <line
+                    x1="13.5"
+                    y1="13.5"
+                    x2="17"
+                    y2="17"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            </form>
 
             {/* Results / status region */}
             <div className="mt-4 min-h-0 flex-1 overflow-y-auto">

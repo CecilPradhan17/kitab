@@ -28,7 +28,20 @@ interface BookDetailModalProps {
   /** Called after a book is deleted, so the parent can close this view and
       refresh the grid (the deleted book is gone, and numbers re-derive). */
   onBookDeleted: () => void;
+  /** Move to the neighboring book in the same order the grid renders, via
+      swipe or the arrow buttons. The parent (LibraryView) owns the list and
+      the "which book is selected" state, so this modal never needs to know
+      the book order itself — just which direction was requested. */
+  onNavigate: (direction: "prev" | "next") => void;
+  /** Whether a prev/next book exists — hides the corresponding arrow at
+      either end of the library instead of navigating to nothing. */
+  hasPrev: boolean;
+  hasNext: boolean;
 }
+
+// Swipe past this many px (and more horizontal than vertical, so scrolling
+// the panel isn't mistaken for a swipe) to trigger navigation.
+const SWIPE_THRESHOLD_PX = 60;
 
 /** Backdrop/panel chrome and the export-modal handoff. All the actual
     per-book content (3D scene, quote editing, delete confirmation, the
@@ -42,6 +55,9 @@ export default function BookDetailModal({
   onClose,
   onBookUpdated,
   onBookDeleted,
+  onNavigate,
+  hasPrev,
+  hasNext,
 }: BookDetailModalProps) {
   // Whether the export modal is stacked on top of this detail modal. Lives
   // here (not in BookDetailPanel) since it must survive a book switch and
@@ -49,6 +65,34 @@ export default function BookDetailModal({
   const [exporting, setExporting] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, { active: book !== null });
+
+  // Only the start point is tracked (not every touchmove) since navigation
+  // decides on the total drag at release, not a live-following animation.
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  function handleTouchStart(event: React.TouchEvent) {
+    const touch = event.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }
+
+  function handleTouchEnd(event: React.TouchEvent) {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start) return;
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+
+    // Require the drag to be more horizontal than vertical, so scrolling the
+    // panel's own content never gets mistaken for a swipe.
+    if (Math.abs(deltaX) < SWIPE_THRESHOLD_PX || Math.abs(deltaX) < Math.abs(deltaY)) {
+      return;
+    }
+    // Swipe right (dragging toward the previous book, like flipping back)
+    // goes prev; swipe left goes next.
+    onNavigate(deltaX > 0 ? "prev" : "next");
+  }
 
   if (!book) return null;
 
@@ -66,6 +110,8 @@ export default function BookDetailModal({
       <div
         ref={panelRef}
         onClick={(event) => event.stopPropagation()}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         className="relative flex w-full max-w-3xl max-h-full flex-col overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#0f0f0f] p-6 shadow-2xl shadow-black/80 sm:p-12"
       >
         <FocusGuard position="first" />
@@ -99,6 +145,39 @@ export default function BookDetailModal({
         />
         <FocusGuard position="last" />
       </div>
+
+      {/* Nav arrows — siblings of the panel (not inside it), fixed to the
+          viewport edges so they stay put regardless of the panel's own
+          width, matching a standard lightbox/carousel layout. z-20 for the
+          same WebGL-compositing reason as the close button above.
+          stopPropagation keeps a click from also closing the modal via the
+          backdrop's own onClick. */}
+      {hasPrev && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onNavigate("prev");
+          }}
+          aria-label="Previous book"
+          className="fixed left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent sm:left-6"
+        >
+          <ChevronIcon direction="left" />
+        </button>
+      )}
+      {hasNext && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onNavigate("next");
+          }}
+          aria-label="Next book"
+          className="fixed right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent sm:right-6"
+        >
+          <ChevronIcon direction="right" />
+        </button>
+      )}
     </div>
 
     {/* Export modal — a sibling (not a child) of the backdrop so clicks on its
@@ -110,5 +189,26 @@ export default function BookDetailModal({
       onClose={() => setExporting(false)}
     />
     </>
+  );
+}
+
+// Matches BookDetailPanel's icon style (20x20 viewBox, stroke-based, 1.4
+// weight, round caps/joins) for visual consistency across the modal.
+function ChevronIcon({ direction }: { direction: "left" | "right" }) {
+  const points = direction === "left" ? "12 4 6 10 12 16" : "8 4 14 10 8 16";
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 20 20"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <polyline points={points} />
+    </svg>
   );
 }

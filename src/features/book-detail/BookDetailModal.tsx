@@ -166,7 +166,14 @@ export default function BookDetailModal({
             up where there's actual space beside the modal. z-20 for the
             same WebGL-compositing reason as the close button above.
             stopPropagation keeps a click from also closing the modal via
-            the backdrop's own onClick. */}
+            the backdrop's own onClick.
+
+            Pinned to a fixed top offset (roughly level with the 3D book
+            image) rather than top-1/2 of the whole panel - the panel's
+            total height grows with a long quote/notes, and centering on
+            that variable height pushed the buttons down into the title
+            whenever notes ran long. A fixed offset stays put regardless of
+            how tall the notes section gets below it. */}
         {hasPrev && (
           <button
             type="button"
@@ -175,7 +182,7 @@ export default function BookDetailModal({
               onNavigate("prev");
             }}
             aria-label="Previous book"
-            className="absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent sm:-left-14"
+            className="absolute left-2 top-16 z-20 flex h-10 w-10 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent sm:-left-14 sm:top-24"
           >
             <ChevronIcon direction="left" />
           </button>
@@ -188,7 +195,7 @@ export default function BookDetailModal({
               onNavigate("next");
             }}
             aria-label="Next book"
-            className="absolute right-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent sm:-right-14"
+            className="absolute right-2 top-16 z-20 flex h-10 w-10 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent sm:-right-14 sm:top-24"
           >
             <ChevronIcon direction="right" />
           </button>

@@ -588,7 +588,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
               <button
                 type="submit"
                 aria-label="Search"
-                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-muted outline-none transition-colors hover:text-accent focus-visible:ring-2 focus-visible:ring-accent"
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-accent outline-none transition hover:text-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-4 w-4">
                   <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.5" />

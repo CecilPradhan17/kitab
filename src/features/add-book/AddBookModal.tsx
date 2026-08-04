@@ -356,41 +356,35 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
                   <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
                     Started
                   </span>
-                  <input
-                    type="date"
-                    value={dateStarted}
-                    onChange={(event) => setDateStarted(event.target.value)}
-                    // min-w-0 + max-w-full + overflow-hidden directly on the
-                    // input itself (not just its label): mobile browsers'
-                    // native type="date" widget doesn't reliably respect a
-                    // percentage width - its calendar-icon/spinner chrome can
-                    // claim more horizontal space than the box it's given,
-                    // rendering wider than its siblings instead of matching
-                    // their right edge. Clipping it to its assigned box
-                    // forces it back in line regardless of that intrinsic
-                    // sizing quirk.
-                    className="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-sans text-sm text-foreground outline-none transition-colors focus:border-accent/60 [color-scheme:dark]"
-                  />
+                  {/* The border/bg/rounding/clipping lives on this plain div,
+                      not the input - an ordinary element's box is guaranteed
+                      to size correctly, whereas a native type="date" control's
+                      own box didn't reliably clip to overflow-hidden set
+                      directly on it. The input itself is just a transparent,
+                      unstyled layer inside, so however wide its native
+                      widget insists on rendering, it's clipped at this
+                      wrapper's edge instead of pushing past it. */}
+                  <div className="w-full min-w-0 overflow-hidden rounded-lg border border-white/10 bg-black/30 transition-colors focus-within:border-accent/60">
+                    <input
+                      type="date"
+                      value={dateStarted}
+                      onChange={(event) => setDateStarted(event.target.value)}
+                      className="w-full min-w-0 max-w-full bg-transparent px-3 py-2.5 font-sans text-sm text-foreground outline-none [color-scheme:dark]"
+                    />
+                  </div>
                 </label>
                 <label className="flex min-w-0 flex-1 flex-col gap-1.5">
                   <span className="font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted">
                     Finished
                   </span>
-                  <input
-                    type="date"
-                    value={dateFinished}
-                    onChange={(event) => setDateFinished(event.target.value)}
-                    // min-w-0 + max-w-full + overflow-hidden directly on the
-                    // input itself (not just its label): mobile browsers'
-                    // native type="date" widget doesn't reliably respect a
-                    // percentage width - its calendar-icon/spinner chrome can
-                    // claim more horizontal space than the box it's given,
-                    // rendering wider than its siblings instead of matching
-                    // their right edge. Clipping it to its assigned box
-                    // forces it back in line regardless of that intrinsic
-                    // sizing quirk.
-                    className="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-sans text-sm text-foreground outline-none transition-colors focus:border-accent/60 [color-scheme:dark]"
-                  />
+                  <div className="w-full min-w-0 overflow-hidden rounded-lg border border-white/10 bg-black/30 transition-colors focus-within:border-accent/60">
+                    <input
+                      type="date"
+                      value={dateFinished}
+                      onChange={(event) => setDateFinished(event.target.value)}
+                      className="w-full min-w-0 max-w-full bg-transparent px-3 py-2.5 font-sans text-sm text-foreground outline-none [color-scheme:dark]"
+                    />
+                  </div>
                 </label>
               </div>
 

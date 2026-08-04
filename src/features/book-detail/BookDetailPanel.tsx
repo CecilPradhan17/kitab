@@ -255,6 +255,10 @@ export default function BookDetailPanel({
             {formatReadingRange(book.dateStarted, book.dateFinished)}
           </p>
 
+          <p className="mt-4 text-center font-sans text-[0.6rem] uppercase tracking-[0.2em] text-muted sm:mt-6">
+            Reader&rsquo;s note:
+          </p>
+
           <div className="my-4 flex flex-1 flex-col items-center justify-center sm:my-8">
             {editingQuote && isOwner ? (
               <div className="flex w-full flex-col gap-3">

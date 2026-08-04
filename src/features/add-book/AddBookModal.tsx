@@ -48,6 +48,11 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
   const [results, setResults] = useState<BookSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Distinct from `results.length === 0`, which is also true before any
+  // search has run at all — without this, "No matches found" showed the
+  // moment the query hit MIN_QUERY_LENGTH, before the button/Enter was ever
+  // pressed. Only a completed search (regardless of outcome) sets this.
+  const [hasSearched, setHasSearched] = useState(false);
 
   // The book the user picked from search results (or just created via the
   // "add manually" form). null = still in search phase.
@@ -114,6 +119,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
       setResults([]);
       setSearching(false);
       setError(null);
+      setHasSearched(false);
       setSelected(null);
       setAddingCustom(false);
       setCustomTitle("");
@@ -151,6 +157,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
       setResults([]);
       setSearching(false);
       setError(null);
+      setHasSearched(false);
       return;
     }
 
@@ -161,11 +168,13 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
       if (requestId === searchRequestId.current) {
         setResults(found);
         setError(null);
+        setHasSearched(true);
       }
     } catch (err) {
       if (requestId === searchRequestId.current) {
         setResults([]);
         setError(err instanceof Error && err.message ? err.message : "Search failed. Please try again.");
+        setHasSearched(true);
       }
     } finally {
       if (requestId === searchRequestId.current) setSearching(false);
@@ -583,12 +592,12 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search by title or author…"
-                className="w-full rounded-lg border border-white/10 bg-black/30 py-3 pl-4 pr-12 font-sans text-sm text-foreground placeholder:text-muted/90 outline-none transition-colors focus:border-accent/60"
+                className="w-full rounded-lg border border-white/10 bg-black/30 py-3 pl-4 pr-14 font-sans text-sm text-foreground placeholder:text-muted/90 outline-none transition-colors focus:border-accent/60"
               />
               <button
                 type="submit"
                 aria-label="Search"
-                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-accent outline-none transition hover:text-foreground active:scale-90 focus-visible:ring-2 focus-visible:ring-accent"
+                className="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg bg-accent text-background outline-none transition hover:bg-accent/90 active:scale-90 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f0f]"
               >
                 <svg aria-hidden viewBox="0 0 20 20" fill="none" className="h-4 w-4">
                   <circle cx="9" cy="9" r="6" stroke="currentColor" strokeWidth="1.5" />
@@ -615,9 +624,9 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
                 <p className="font-sans text-sm text-red-400/80">{error}</p>
               )}
 
-              {!searching &&
+              {hasSearched &&
+                !searching &&
                 !error &&
-                query.trim().length >= MIN_QUERY_LENGTH &&
                 results.length === 0 && (
                   <p className="font-sans text-sm text-muted">
                     No matches found.

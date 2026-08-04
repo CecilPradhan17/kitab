@@ -360,7 +360,16 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
                     type="date"
                     value={dateStarted}
                     onChange={(event) => setDateStarted(event.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-sans text-sm text-foreground outline-none transition-colors focus:border-accent/60 [color-scheme:dark]"
+                    // min-w-0 + max-w-full + overflow-hidden directly on the
+                    // input itself (not just its label): mobile browsers'
+                    // native type="date" widget doesn't reliably respect a
+                    // percentage width - its calendar-icon/spinner chrome can
+                    // claim more horizontal space than the box it's given,
+                    // rendering wider than its siblings instead of matching
+                    // their right edge. Clipping it to its assigned box
+                    // forces it back in line regardless of that intrinsic
+                    // sizing quirk.
+                    className="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-sans text-sm text-foreground outline-none transition-colors focus:border-accent/60 [color-scheme:dark]"
                   />
                 </label>
                 <label className="flex min-w-0 flex-1 flex-col gap-1.5">
@@ -371,7 +380,16 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
                     type="date"
                     value={dateFinished}
                     onChange={(event) => setDateFinished(event.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-sans text-sm text-foreground outline-none transition-colors focus:border-accent/60 [color-scheme:dark]"
+                    // min-w-0 + max-w-full + overflow-hidden directly on the
+                    // input itself (not just its label): mobile browsers'
+                    // native type="date" widget doesn't reliably respect a
+                    // percentage width - its calendar-icon/spinner chrome can
+                    // claim more horizontal space than the box it's given,
+                    // rendering wider than its siblings instead of matching
+                    // their right edge. Clipping it to its assigned box
+                    // forces it back in line regardless of that intrinsic
+                    // sizing quirk.
+                    className="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-white/10 bg-black/30 px-3 py-2.5 font-sans text-sm text-foreground outline-none transition-colors focus:border-accent/60 [color-scheme:dark]"
                   />
                 </label>
               </div>

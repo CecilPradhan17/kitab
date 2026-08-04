@@ -48,6 +48,11 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
   const [results, setResults] = useState<BookSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The trimmed query that actually produced the current `results` — once
+  // the user edits the text away from this, `results` is stale (from a
+  // different search) and gets cleared immediately rather than lingering
+  // until the next submit resolves.
+  const [lastSearchedQuery, setLastSearchedQuery] = useState("");
   // Distinct from `results.length === 0`, which is also true before any
   // search has run at all — without this, "No matches found" showed the
   // moment the query hit MIN_QUERY_LENGTH, before the button/Enter was ever
@@ -120,6 +125,7 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
       setSearching(false);
       setError(null);
       setHasSearched(false);
+      setLastSearchedQuery("");
       setSelected(null);
       setAddingCustom(false);
       setCustomTitle("");
@@ -169,12 +175,14 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
         setResults(found);
         setError(null);
         setHasSearched(true);
+        setLastSearchedQuery(trimmed);
       }
     } catch (err) {
       if (requestId === searchRequestId.current) {
         setResults([]);
         setError(err instanceof Error && err.message ? err.message : "Search failed. Please try again.");
         setHasSearched(true);
+        setLastSearchedQuery(trimmed);
       }
     } finally {
       if (requestId === searchRequestId.current) setSearching(false);
@@ -590,7 +598,18 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
                 ref={inputRef}
                 type="text"
                 value={query}
-                onChange={(event) => setQuery(event.target.value)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setQuery(value);
+                  // Once the text no longer matches what actually produced
+                  // `results`, that list is stale - clear it immediately
+                  // instead of leaving it on screen until the next submit.
+                  if (value.trim() !== lastSearchedQuery) {
+                    setResults([]);
+                    setError(null);
+                    setHasSearched(false);
+                  }
+                }}
                 placeholder="Search by title or author…"
                 className="w-full rounded-lg border border-white/10 bg-black/30 py-3 pl-4 pr-14 font-sans text-sm text-foreground placeholder:text-muted/90 outline-none transition-colors focus:border-accent/60"
               />
@@ -614,62 +633,72 @@ export default function AddBookModal({ open, onClose, onAdded }: AddBookModalPro
               </button>
             </form>
 
-            {/* Results / status region */}
+            {/* Results / status region. While a search is in flight, this
+                shows only the spinner in its own centered container -
+                stale results from a previous search never render
+                underneath it (onChange above already clears them the
+                moment the text changes, but this also covers resubmitting
+                the exact same query). */}
             <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
-              {searching && (
-                <p className="font-sans text-sm text-muted">Searching…</p>
+              {searching ? (
+                <div className="flex min-h-[140px] items-center justify-center">
+                  <div
+                    role="status"
+                    aria-label="Searching"
+                    className="h-6 w-6 animate-spin rounded-full border-2 border-white/10 border-t-accent"
+                  />
+                </div>
+              ) : (
+                <>
+                  {error && (
+                    <p className="font-sans text-sm text-red-400/80">{error}</p>
+                  )}
+
+                  {hasSearched && !error && results.length === 0 && (
+                    <p className="font-sans text-sm text-muted">
+                      No matches found.
+                    </p>
+                  )}
+
+                  <ul className="flex flex-col gap-1">
+                    {results.map((result) => {
+                      const key =
+                        result.source === "custom" ? result.customBookId : result.isbn;
+                      return (
+                        <li key={key}>
+                          <button
+                            type="button"
+                            onClick={() => setSelected(result)}
+                            className={`flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left outline-none transition-colors focus-visible:bg-white/5 ${
+                              result.source === "custom"
+                                ? "bg-accent/10 hover:bg-accent/15"
+                                : "hover:bg-white/5"
+                            }`}
+                          >
+                            <div className="h-10 w-[1.67rem] shrink-0 flex-none overflow-hidden rounded ring-1 ring-white/10">
+                              <img
+                                src={result.coverUrl}
+                                alt=""
+                                aria-hidden
+                                loading="lazy"
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                            <span className="flex min-w-0 flex-col">
+                              <span className="truncate font-serif text-sm text-foreground">
+                                {result.title}
+                              </span>
+                              <span className="truncate font-sans text-xs text-muted">
+                                {result.author}
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
               )}
-
-              {error && !searching && (
-                <p className="font-sans text-sm text-red-400/80">{error}</p>
-              )}
-
-              {hasSearched &&
-                !searching &&
-                !error &&
-                results.length === 0 && (
-                  <p className="font-sans text-sm text-muted">
-                    No matches found.
-                  </p>
-                )}
-
-              <ul className="flex flex-col gap-1">
-                {results.map((result) => {
-                  const key =
-                    result.source === "custom" ? result.customBookId : result.isbn;
-                  return (
-                    <li key={key}>
-                      <button
-                        type="button"
-                        onClick={() => setSelected(result)}
-                        className={`flex w-full items-center gap-2.5 rounded-lg p-1.5 text-left outline-none transition-colors focus-visible:bg-white/5 ${
-                          result.source === "custom"
-                            ? "bg-accent/10 hover:bg-accent/15"
-                            : "hover:bg-white/5"
-                        }`}
-                      >
-                        <div className="h-10 w-[1.67rem] shrink-0 flex-none overflow-hidden rounded ring-1 ring-white/10">
-                          <img
-                            src={result.coverUrl}
-                            alt=""
-                            aria-hidden
-                            loading="lazy"
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                        <span className="flex min-w-0 flex-col">
-                          <span className="truncate font-serif text-sm text-foreground">
-                            {result.title}
-                          </span>
-                          <span className="truncate font-sans text-xs text-muted">
-                            {result.author}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
             </div>
 
             <div className="mt-4 flex justify-end">

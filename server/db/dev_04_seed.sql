@@ -12,7 +12,7 @@ INSERT INTO users (id, username, email, password_hash, display_name, bio)
 VALUES (
   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
   'cecildev',
-  'cecilpradhan99@gmail.com',
+  'email@gmail.com',
   '$2b$10$6cFSl3RnU5DhjBR4QzHQUe6mqsBywSF4.kow6rOdme/DXYd/IW6.q',
   'Cecil',
   'Building Kitab'

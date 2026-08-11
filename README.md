@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kitab
 
-## Getting Started
+**Kitab** (Nepali/Arabic/Urdu/Hindi for "book") is a web app for tracking
+books read, presented as an aesthetically premium personal library. Each
+book gets a 3D interactive model on click, and finishing a book can be
+exported as a cinematic, Instagram-Story-style share card — dark
+background, 3D book render, gold accents, a quote — inspired by Strava's
+run-sharing cards.
 
-First, run the development server:
+This is a portfolio project: the goal was to build a real, deployed
+full-stack app while making (and being able to explain) deliberate
+architecture decisions end to end, not just ship the fastest path to a
+working demo.
+
+**Live app:** _add your deployed URL here_
+
+## Features
+
+- Personal library grid with a 3D interactive book model per book (click to
+  open — the grid itself stays flat 2D for performance at scale)
+- Public shareable profile pages (`/username`) — no login required to view
+- Cinematic PNG story-export cards for finished books, built from an
+  offscreen WebGL render composited with a styled HTML overlay
+- Auth, avatar upload, and per-book quotes, all backed by a real REST API
+- User-submitted "custom books" shared catalog, for books not on Open Library
+- Cover images ingested once per ISBN, resized, and served from a CDN — not
+  hot-linked from a third party on every page load
+
+## Tech stack
+
+- **Frontend:** Next.js (App Router), React, TypeScript, Tailwind CSS
+- **3D:** Three.js via React Three Fiber + drei + postprocessing (bloom/glow)
+- **Backend:** Express + TypeScript + PostgreSQL, hand-written SQL (no ORM)
+- **Image storage:** AWS S3 + CloudFront (Origin Access Control, not a
+  public bucket)
+- **Auth:** manual JWT + bcrypt (no third-party auth library)
+- **Hosting:** Vercel (frontend), Railway/Render (API), Neon (Postgres)
+
+## A few engineering decisions worth calling out
+
+- **Express instead of Next.js route handlers.** Route handlers could serve
+  this app's CRUD needs more simply, but a standalone REST API is a
+  stronger backend signal for a portfolio project, and a long-running
+  server keeps a clean Postgres connection pool without needing external
+  pooling for serverless functions.
+- **Raw SQL, no ORM.** Chosen to actually learn and be able to explain
+  every query, at the cost of more manual boilerplate (types, migrations).
+- **CDN in front of S3 from day one, not a later optimization** — the
+  bucket itself isn't publicly readable; only CloudFront (via OAC) can read
+  it. Cover images are fetched and resized once per ISBN and cached, not
+  re-fetched from Open Library on every request.
+- **A same-origin media proxy for WebGL textures.** Loading a cross-origin
+  texture into WebGL requires CORS mode, and that request pattern turned
+  out to be unreliable in the browser in ways that didn't fully
+  root-cause even with correct CloudFront CORS headers. Fixed by proxying
+  CloudFront through the app's own origin (`/media/*`) so the browser never
+  makes a cross-origin request for a texture at all — closing the whole
+  class of problem instead of chasing the exact cause.
+- **Book number is derived, not stored.** There's no `book_number` column;
+  it's assigned by sort position on read. A stored sequence would need
+  resequencing on every insert/delete — deriving it makes both operations
+  trivial and numbering always internally consistent.
+
+## Local development
+
+Requires Docker (for local Postgres), Node, and npm.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# Backend
+cd server
+cp .env.example .env   # fill in real values — see comments in the file
+docker compose up -d
+npm install
+npm run dev             # http://localhost:4000
+
+# Frontend (from repo root)
+npm install
+npm run dev              # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`server/.env.example` documents every required environment variable,
+including which ones are safe to commit (bucket name, CloudFront domain)
+versus which must stay secret (AWS keys, JWT secret, DB credentials).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Feature-based, not type-based — files are grouped by what they belong to
+(library, book detail, story export, add-book, profile) rather than by
+generic `components`/`hooks`/`utils` folders. See `CLAUDE.md` for the full
+folder layout and the reasoning behind it, along with the complete set of
+architecture decisions this project made and why.
 
-## Learn More
+## License
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+All rights reserved.

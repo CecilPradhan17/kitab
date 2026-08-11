@@ -1,18 +1,19 @@
 # Kitab
 
 **Kitab** (Nepali/Arabic/Urdu/Hindi for "book") is a web app for tracking
-books read, presented as an aesthetically premium personal library. Each
-book gets a 3D interactive model on click, and finishing a book can be
-exported as a cinematic, Instagram-Story-style share card — dark
-background, 3D book render, gold accents, a quote — inspired by Strava's
-run-sharing cards.
+books read, presented as an aesthetically premium personal library.
+
+Each book gets a 3D interactive model on click, and finished books can be
+exported as a cinematic, Instagram-Story-style share card. (inspired by Strava's
+run-sharing cards)
 
 This is a portfolio project: the goal was to build a real, deployed
 full-stack app while making (and being able to explain) deliberate
-architecture decisions end to end, not just ship the fastest path to a
-working demo.
+architecture decisions end to end, to efficiently and securely handle large amounts of image storage and processing. 
 
-**Live app:** _add your deployed URL here_
+Also used by the creator to track his own books. 
+
+**Live app:** kitab-dun.vercel.app
 
 ## Features
 
@@ -34,7 +35,7 @@ working demo.
 - **Image storage:** AWS S3 + CloudFront (Origin Access Control, not a
   public bucket)
 - **Auth:** manual JWT + bcrypt (no third-party auth library)
-- **Hosting:** Vercel (frontend), Railway/Render (API), Neon (Postgres)
+- **Hosting:** Vercel (frontend), Render (API), Neon (Postgres)
 
 ## A few engineering decisions worth calling out
 

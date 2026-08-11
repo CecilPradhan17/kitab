@@ -27,8 +27,15 @@ gold accents, metadata, and a quote — downloadable as a PNG for sharing.
 
 ## Current phase
 
-**Core app, auth, profiles, avatar upload, and S3 cover-image storage built;
-not yet deployed.** The full stack is connected: Express API running in
+**Deployed.** Frontend on Vercel, Express backend on Railway/Render, Postgres
+migrated to production, image storage on S3/CloudFront. The full
+deployment-day checklist (env vars, `trust proxy`, production migrations
+only, S3 CORS origin, fresh `JWT_SECRET`) has been completed — see
+"Deployment (done)" below for details. Live URLs aren't recorded in this file
+since they can change; ask the developer if a task needs them.
+
+Core app, auth, profiles, avatar upload, and S3 cover-image storage built.
+The full stack is connected: Express API running in
 `server/`, Postgres via Docker, Next.js frontend wired to the real API. Book
 CRUD, JWT auth, public profile pages at `/[username]`, S3/CloudFront avatar
 upload, and S3/CloudFront book-cover ingest are all built — see the "Auth"
@@ -56,7 +63,7 @@ CloudFront through this app's own origin (`/media/*`), and `src/lib/mediaUrl.ts`
 rewrites CloudFront URLs to that same-origin path before any texture load —
 see "Image storage & CDN" and Book3D.tsx's comment for the full reasoning.
 Requires `NEXT_PUBLIC_CLOUDFRONT_DOMAIN` in `.env.local` (frontend), no
-hardcoded fallback. Next milestone is deployment (Vercel + Railway/Render).
+hardcoded fallback.
 
 ## Backend decisions (locked in, with reasoning)
 
@@ -198,7 +205,7 @@ hardcoded fallback. Next milestone is deployment (Vercel + Railway/Render).
   final PNG. Client-side only, no server rendering. `preserveDrawingBuffer: true`
   is required on the export renderer or `toDataURL()` returns blank.
 - **Backend:** Express + Node + TypeScript + PostgreSQL (built, running in `server/`)
-  **Hosting (not yet deployed):** Railway or Render for the backend; Vercel for the
+  **Hosting (deployed):** Railway or Render for the backend; Vercel for the
   Next.js frontend. **Image storage is on AWS now** (S3 + CloudFront — see
   "Image storage & CDN" section), decided ahead of the broader AWS migration
   because it's needed for profiles/auth. Full backend AWS migration remains a
@@ -541,43 +548,49 @@ Do not pre-create empty folders for features that haven't started yet.
   fully editable by Claude Code and should be kept in sync whenever a new
   required env var is introduced.
 
+## Deployment (done)
+
+Frontend on Vercel, Express backend on Railway/Render. Env vars wired:
+`API_URL` (server-side) and `NEXT_PUBLIC_API_URL` (client-side) pointing at
+the deployed Express URL; `FRONTEND_ORIGIN` on Express pointing at the Vercel
+URL; `NEXT_PUBLIC_SITE_URL` on Vercel set to the deployed frontend URL itself
+— without it, `metadataBase` in `src/app/layout.tsx` falls back to
+`localhost:3000`, so every og:image/twitter:image URL on the live site points
+at localhost and silently fails for every link-preview crawler (missed on the
+first deploy, 2026-08-02 — no crawler error surfaces this, it just falls back
+to scraping the page's DOM for an image). Deployment-day security checklist,
+completed:
+
+- `NODE_ENV=production` set on the Express host (also makes `FRONTEND_ORIGIN`
+  required by `validateEnv()`).
+- `app.set("trust proxy", 1)` added in `server/src/app.ts` — required for the
+  IP-keyed rate limiters (auth, book-search, general) to key per-client
+  instead of per-proxy, now that the app is actually behind Railway/Render's
+  proxy.
+- `server/db/` migrations applied to production using ONLY the numbered files
+  (01–13) — the two `dev_`-prefixed seed files are dev-only and were not run
+  against production (`dev_04_seed.sql` creates a user with a
+  publicly-known password and blanket-assigns orphaned book rows).
+- Production frontend origin (the Vercel URL) added to the S3 bucket's CORS
+  allowed-origins — presigned PUT uploads (avatars, custom covers) are
+  browser-direct and CORS-gated by the bucket config, which previously only
+  allowed the localhost dev origin.
+- Fresh production `JWT_SECRET` generated (`openssl rand -hex 32`) — not
+  reused from the dev value.
+
+Ask the developer for the live URLs if a task needs them — not recorded here
+since they can change (e.g. custom domain).
+
 ## What's next (post-V1)
 
 In rough priority order:
 
-1. **Deployment** — Vercel (frontend) + Railway or Render (Express). Env vars
-   to wire: `API_URL` (server-side) and `NEXT_PUBLIC_API_URL` (client-side)
-   pointing at the deployed Express URL; `FRONTEND_ORIGIN` on Express pointing
-   at the Vercel URL; `NEXT_PUBLIC_SITE_URL` on Vercel set to the deployed
-   frontend URL itself (e.g. `https://kitab-dun.vercel.app`) — without it,
-   `metadataBase` in `src/app/layout.tsx` falls back to `localhost:3000`, so
-   every og:image/twitter:image URL on the live site points at localhost and
-   silently fails for every link-preview crawler (missed on the first
-   deploy, 2026-08-02 — no crawler error surfaces this, it just falls back
-   to scraping the page's DOM for an image). Deployment-day security checklist:
-   - Set `NODE_ENV=production` on the Express host (also makes
-     `FRONTEND_ORIGIN` required by `validateEnv()`).
-   - Add `app.set("trust proxy", 1)` in `server/src/app.ts` — required for
-     the IP-keyed rate limiters (auth, book-search, general) to key
-     per-client instead of per-proxy. Only correct once actually behind
-     Railway/Render's proxy, which is why it isn't set yet.
-   - When applying `server/db/` migrations to production, run ONLY the
-     numbered files (01–13) — the two `dev_`-prefixed seed files are dev-only
-     and must never run against production (`dev_04_seed.sql` creates a user
-     with a publicly-known password and blanket-assigns orphaned book rows).
-   - Add the production frontend origin (the Vercel URL) to the S3 bucket's
-     CORS allowed-origins — presigned PUT uploads (avatars, custom covers)
-     are browser-direct and CORS-gated by the bucket config, which currently
-     only allows the localhost dev origin. curl testing will not catch this
-     (no preflight); it's the same trap hit during the original avatar build.
-   - Generate a fresh production `JWT_SECRET` (`openssl rand -hex 32`) —
-     never reuse the dev value.
-2. **Spine color at ingest** — Move dominant-hue extraction server-side (via
+1. **Spine color at ingest** — Move dominant-hue extraction server-side (via
    `sharp`) and store it as a `spineColor` field on the book, so the frontend
    reads it from props instead of computing it client-side on every load. Now
    natural to build alongside `coverIngest.ts`, since that's already where the
    cover bytes are fetched/resized server-side.
-4. **"Share to Instagram"** — Web Share API on mobile. Placeholder comment
+2. **"Share to Instagram"** — Web Share API on mobile. Placeholder comment
    already in `ExportModal.tsx`.
 
 ## Known deferred issues

@@ -100,6 +100,34 @@ export default function ExportCardPanel({ book, profile }: ExportCardPanelProps)
     await document.fonts.ready;
     const node = captureRef.current;
     if (!node) throw new Error("Export card not mounted");
+
+    // html-to-image does not wait for data-URL <img> elements while cloning
+    // the node (it assumes they are already ready). The 3D book hero is a
+    // large data URL, though, and can still be decoding when someone taps an
+    // action. In that case the surrounding card is captured correctly but
+    // the browser paints an empty hero area. Wait for every image in the
+    // actual capture tree before handing it to html-to-image; this also covers
+    // the optional profile avatar.
+    await Promise.all(
+      Array.from(node.querySelectorAll("img"), async (image) => {
+        if (!image.complete) {
+          await new Promise<void>((resolve, reject) => {
+            image.addEventListener("load", () => resolve(), { once: true });
+            image.addEventListener(
+              "error",
+              () => reject(new Error("An image in the share card failed to load")),
+              { once: true },
+            );
+          });
+        }
+
+        if (image.decode) await image.decode();
+        if (!image.naturalWidth) {
+          throw new Error("An image in the share card could not be decoded");
+        }
+      }),
+    );
+
     // pixelRatio 1 so the output is exactly CARD_WIDTH×CARD_HEIGHT (the hero is
     // already rendered at high res, so it stays crisp).
     return toPng(node, {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { toPng } from "html-to-image";
+import { toCanvas } from "html-to-image";
 import type { Book } from "@/features/library/mockBooks";
 import type { Profile } from "@/features/profile/types";
 import { renderBookToDataURL } from "./renderBook";
@@ -128,14 +128,40 @@ export default function ExportCardPanel({ book, profile }: ExportCardPanelProps)
       }),
     );
 
-    // pixelRatio 1 so the output is exactly CARD_WIDTH×CARD_HEIGHT (the hero is
-    // already rendered at high res, so it stays crisp).
-    return toPng(node, {
+    const hero = node.querySelector<HTMLImageElement>("[data-export-hero]");
+    if (!hero) throw new Error("Book image not mounted in export card");
+
+    // The WebGL book render is a large data-URL PNG. Safari/WebKit can omit
+    // such images when html-to-image puts them inside an SVG foreignObject,
+    // even after they have decoded. Capture the DOM card without that image,
+    // then paint the already-decoded hero straight onto the resulting canvas.
+    // This avoids foreignObject image rasterization entirely.
+    const canvas = await toCanvas(node, {
       width: CARD_WIDTH,
       height: CARD_HEIGHT,
       pixelRatio: 1,
       cacheBust: true,
+      filter: (element) =>
+        !(
+          element instanceof HTMLImageElement &&
+          element.hasAttribute("data-export-hero")
+        ),
     });
+
+    const cardRect = node.getBoundingClientRect();
+    const heroRect = hero.getBoundingClientRect();
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Couldn't create the share-card canvas");
+
+    context.drawImage(
+      hero,
+      heroRect.left - cardRect.left,
+      heroRect.top - cardRect.top,
+      heroRect.width,
+      heroRect.height,
+    );
+
+    return canvas.toDataURL("image/png");
   }
 
   async function handleDownload() {

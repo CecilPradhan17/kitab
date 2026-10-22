@@ -109,6 +109,7 @@ export default function StoryExportCard({
         />
         <img
           src={heroSrc}
+          data-export-hero
           alt=""
           aria-hidden
           className="relative max-h-full w-auto object-contain"
